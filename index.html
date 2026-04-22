@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-title" content="Hifi">
     <meta name="theme-color" content="#0d0d10">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -1001,6 +1001,7 @@
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 880px) {
+            :root { --player-h: 132px; }
             .app {
                 grid-template-columns: 1fr;
             }
@@ -1009,35 +1010,71 @@
                 top: 0;
                 left: 0;
                 bottom: 0;
-                width: 260px;
+                width: 280px;
                 z-index: 60;
                 transform: translateX(-100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
             .sidebar.open { transform: translateX(0); box-shadow: 16px 0 48px rgba(0, 0, 0, 0.5); }
             .menu-btn { display: flex; }
-            .topbar { padding-left: 16px; padding-right: 16px; gap: 10px; }
+            .topbar { padding: calc(12px + var(--safe-top)) 14px 12px; gap: 10px; }
+            .topbar-actions { margin-left: 0; }
             .content { padding: 20px 16px 32px; }
-            .detail-hero { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .detail-hero { flex-direction: column; align-items: flex-start; gap: 18px; }
             .detail-art { width: 180px; height: 180px; }
-            .detail-name { font-size: 32px; }
-            .view-title { font-size: 26px; }
-            .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 18px 14px; }
-            .track-row { grid-template-columns: 30px 1fr 60px; gap: 12px; padding: 12px 8px; }
-            .track-list-header > :nth-child(3), .track-list-header > :nth-child(5),
-            .track-row > :nth-child(3), .track-row > :nth-child(5) { display: none; }
+            .detail-name { font-size: 28px; letter-spacing: -0.7px; }
+            .view-title { font-size: 24px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 22px 14px; }
+            .track-row { grid-template-columns: 28px 1fr 32px; gap: 10px; padding: 12px 6px; }
+            .track-list-header { grid-template-columns: 28px 1fr 32px; gap: 10px; padding: 8px 6px; }
+            .track-list-header > :nth-child(3), .track-list-header > :nth-child(4),
+            .track-row > :nth-child(3), .track-row > :nth-child(4) { display: none; }
+            .track-menu { opacity: 1; padding: 6px 4px; }
             .player {
                 grid-template-columns: 1fr auto;
                 grid-template-rows: auto auto;
-                padding: 8px 12px calc(8px + var(--safe-bottom));
-                gap: 6px 12px;
+                padding: 10px 12px calc(8px + var(--safe-bottom));
+                gap: 8px 12px;
+                align-items: center;
             }
-            .player-track { grid-column: 1; grid-row: 1; }
-            .player-right { grid-column: 2; grid-row: 1; }
+            .player-track { grid-column: 1; grid-row: 1; min-width: 0; }
+            .player-art { width: 46px; height: 46px; }
+            .player-title { font-size: 13px; }
+            .player-artist { font-size: 11px; }
+            .player-right { grid-column: 2; grid-row: 1; gap: 6px; }
             .player-controls { grid-column: 1 / -1; grid-row: 2; }
-            .player-buttons { gap: 18px; }
+            .player-buttons { gap: 14px; }
+            .player-buttons .ctrl-btn { padding: 4px; }
+            .play-btn { width: 36px; height: 36px; }
+            .scrub-row { max-width: none; gap: 8px; }
+            .time { min-width: 34px; font-size: 10px; }
             .vol-row { display: none; }
-            .player-right .ctrl-btn { padding: 8px; }
+            .player-right .ctrl-btn { padding: 6px; }
+            .speed-btn { padding: 4px 7px; font-size: 11px; }
+
+            /* Hide "Add Music" label on narrow screens */
+            .btn-primary .btn-label { display: none; }
+            .btn-primary { padding: 9px 12px; }
+        }
+
+        @media (max-width: 480px) {
+            :root { --player-h: 124px; }
+            .topbar { padding: calc(10px + var(--safe-top)) 12px 10px; gap: 8px; }
+            .content { padding: 16px 14px 28px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 18px 12px; }
+            .detail-art { width: 160px; height: 160px; }
+            .detail-name { font-size: 24px; }
+            .player-buttons { gap: 10px; }
+            .play-btn { width: 34px; height: 34px; }
+            .player-right { gap: 4px; }
+            .np-controls { gap: 22px; }
+            .np-art { width: min(280px, 72vw); }
+            .np-title { font-size: 20px; }
+        }
+
+        /* Very narrow phones — hide speed button to save space, accessible from Now Playing */
+        @media (max-width: 360px) {
+            .player-right .speed-btn { display: none; }
         }
 
         .sidebar-backdrop {
@@ -1110,7 +1147,7 @@
             <div class="topbar-actions">
                 <button class="btn-primary" id="add-btn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Add Music
+                    <span class="btn-label">Add Music</span>
                 </button>
             </div>
         </div>
@@ -1543,10 +1580,10 @@ function renderAlbumCard(album, kind) {
     const url = cover ? artworkURL(cover) : null;
     const detailKind = kind === 'audiobooks' ? 'audiobook' : 'album';
     return `
-        <div class="album-card" onclick="openDetail('${detailKind}', '${escapeAttr(album.key)}')">
+        <div class="album-card" onclick="openDetail('${detailKind}', ${jsArg(album.key)})">
             <div class="album-art ${url ? '' : 'empty'}">
                 ${url ? `<img src="${url}" alt="">` : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>'}
-                <button class="play-overlay" onclick="event.stopPropagation(); playAlbum('${escapeAttr(album.key)}')">
+                <button class="play-overlay" onclick="event.stopPropagation(); playAlbum(${jsArg(album.key)})">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
             </div>
@@ -1566,7 +1603,7 @@ function renderSongsView() {
                 <div class="view-subtitle">${tracks.length} track${tracks.length !== 1 ? 's' : ''}</div>
             </div>
             <div class="view-actions">
-                <button class="btn-ghost" onclick="playList(${JSON.stringify(tracks.map(t => t.id)).replace(/"/g, '&quot;')})">
+                <button class="btn-ghost" onclick="playList(${jsArg(tracks.map(t => t.id))})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                     Play All
                 </button>
@@ -1631,17 +1668,17 @@ function renderAlbumDetail(key, isAudiobook) {
                 <div class="detail-author">${escapeHtml(album.artist)}</div>
                 <div class="detail-stats">${album.tracks.length} ${isAudiobook ? 'chapter' : 'track'}${album.tracks.length !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
                 <div class="detail-actions">
-                    <button class="btn-play" onclick='playList(${JSON.stringify(trackIds)})'>
+                    <button class="btn-play" onclick="playList(${jsArg(trackIds)})">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         Play
                     </button>
-                    <button class="btn-icon" onclick='shufflePlay(${JSON.stringify(trackIds)})' title="Shuffle">
+                    <button class="btn-icon" onclick="shufflePlay(${jsArg(trackIds)})" title="Shuffle">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
                     </button>
-                    <button class="btn-icon" onclick="toggleAudiobook('${escapeAttr(key)}')" title="${isAudiobook ? 'Treat as music album' : 'Mark as audiobook'}">
+                    <button class="btn-icon" onclick="toggleAudiobook(${jsArg(key)})" title="${isAudiobook ? 'Treat as music album' : 'Mark as audiobook'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                     </button>
-                    <button class="btn-icon danger" onclick="confirmDeleteAlbum('${escapeAttr(key)}')" title="Delete album">
+                    <button class="btn-icon danger" onclick="confirmDeleteAlbum(${jsArg(key)})" title="Delete album">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                     </button>
                 </div>
@@ -1665,7 +1702,7 @@ function renderPlaylistDetail(id) {
                 <div class="detail-name">${escapeHtml(pl.name)}</div>
                 <div class="detail-stats">${tracks.length} track${tracks.length !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
                 <div class="detail-actions">
-                    <button class="btn-play" onclick='playList(${JSON.stringify(tracks.map(t => t.id))})'>
+                    <button class="btn-play" onclick="playList(${jsArg(tracks.map(t => t.id))})">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         Play
                     </button>
@@ -1734,7 +1771,8 @@ function refreshNavActive() {
 }
 
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function escapeAttr(s) { return String(s ?? '').replace(/[\\'"\n\r]/g, c => '\\' + c).replace(/ /g, '\\u0000'); }
+// Embed any value as a JS expression inside a double-quoted HTML attribute.
+function jsArg(v) { return JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ============================================================
 // PLAYBACK
@@ -2088,7 +2126,7 @@ function confirmDeleteAlbum(key) {
         <div style="color:var(--text-dim);font-size:14px;margin-bottom:20px;line-height:1.5">This will permanently remove ${album.tracks.length} track${album.tracks.length !== 1 ? 's' : ''} from your library.</div>
         <div class="modal-actions">
             <button class="btn-text" onclick="hideModal()">Cancel</button>
-            <button class="btn-text danger" onclick="deleteAlbum('${escapeAttr(key)}')">Delete</button>
+            <button class="btn-text danger" onclick="deleteAlbum(${jsArg(key)})">Delete</button>
         </div>`);
 }
 
@@ -2270,7 +2308,11 @@ function showSleepMenu(e) {
 }
 
 function setSleep(mins) {
-    if (state.sleepTimer) { clearTimeout(state.sleepTimer); state.sleepTimer = null; }
+    if (state.sleepTimer) {
+        if (typeof state.sleepTimer === 'object' && state.sleepTimer.cancel) state.sleepTimer.cancel();
+        else clearTimeout(state.sleepTimer);
+        state.sleepTimer = null;
+    }
     if (mins === 0) { toast('Sleep timer cancelled'); $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active'); return; }
     if (mins === -1) {
         const onEnd = () => { audio.pause(); state.isPlaying = false; updatePlayUI(); audio.removeEventListener('ended', onEnd); $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active'); toast('Stopped (end of track)'); };
