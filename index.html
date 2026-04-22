@@ -1426,6 +1426,37 @@ function isAudioFile(file) {
     return /\.(mp3|m4a|m4b|aac|ogg|opus|wav|flac|weba|wma)$/.test(name);
 }
 
+// Infer a working MIME type from a file. Browsers often leave file.type empty
+// for .m4b and some other extensions — an empty-type Blob can fail to decode.
+function inferMimeType(file) {
+    if (file.type && file.type !== '') return file.type;
+    const name = (file.name || '').toLowerCase();
+    const m = name.match(/\.([a-z0-9]+)$/);
+    const ext = m ? m[1] : '';
+    return {
+        mp3: 'audio/mpeg',
+        m4a: 'audio/mp4',
+        m4b: 'audio/mp4',
+        aac: 'audio/aac',
+        ogg: 'audio/ogg',
+        opus: 'audio/ogg',
+        wav: 'audio/wav',
+        flac: 'audio/flac',
+        weba: 'audio/webm',
+        wma: 'audio/x-ms-wma',
+    }[ext] || 'audio/mpeg';
+}
+
+// Return a Blob with a guaranteed, correct MIME type so createObjectURL
+// produces a URL the <audio> element can decode. Older imports may have a
+// wrong stored mimeType (e.g. .m4b incorrectly tagged audio/mpeg), so we
+// always re-infer from the actual File.
+function playableBlob(track) {
+    const desired = inferMimeType(track.file || {}) || track.mimeType || 'audio/mpeg';
+    if (track.file && track.file.type === desired) return track.file;
+    return new Blob([track.file], { type: desired });
+}
+
 // ============================================================
 // IMPORT
 // ============================================================
@@ -1451,7 +1482,7 @@ async function importFiles(fileList) {
                 albumArtist: tags.albumArtist || tags.artist || 'Unknown Artist',
                 trackNum: parseInt(tags.track) || 0,
                 duration: duration,
-                mimeType: file.type || 'audio/mpeg',
+                mimeType: inferMimeType(file),
                 addedAt: Date.now(),
                 kind: isAudiobook ? 'audiobook' : 'music',
                 file: file,
@@ -1834,7 +1865,7 @@ async function playCurrent() {
     if (!track) return;
     state.currentTrack = track;
     if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
-    currentObjectURL = URL.createObjectURL(track.file);
+    currentObjectURL = URL.createObjectURL(playableBlob(track));
     audio.src = currentObjectURL;
     audio.playbackRate = state.settings.speed;
     audio.volume = state.settings.volume;
@@ -1960,6 +1991,18 @@ audio.addEventListener('loadedmetadata', () => {
     const dur = audio.duration || 0;
     $('time-total').textContent = fmtTime(dur);
     $('np-time-total').textContent = fmtTime(dur);
+});
+audio.addEventListener('error', () => {
+    const err = audio.error;
+    if (!err) return;
+    const reasons = {
+        1: 'Playback aborted',
+        2: 'Network error',
+        3: 'Cannot decode this file',
+        4: 'This audio format is not supported by your browser',
+    };
+    toast(reasons[err.code] || 'Playback error');
+    console.error('audio error', err);
 });
 
 audio.addEventListener('timeupdate', () => {
