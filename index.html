@@ -340,6 +340,9 @@
             color: var(--text-faint);
         }
 
+        /* Default placeholder cover (when no embedded artwork) */
+        .art-placeholder { display: block; width: 100%; height: 100%; }
+
         .play-overlay {
             position: absolute;
             bottom: 10px;
@@ -1401,7 +1404,8 @@ function readTags(file) {
 
 function getDuration(file) {
     return new Promise((resolve) => {
-        const url = URL.createObjectURL(file);
+        const blob = file.type ? file : new Blob([file], { type: inferMimeType(file) });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('audio');
         a.preload = 'metadata';
         a.onloadedmetadata = () => { resolve(a.duration || 0); URL.revokeObjectURL(url); };
@@ -1458,6 +1462,117 @@ function playableBlob(track) {
 }
 
 // ============================================================
+// MP4 CHAPTER PARSER (chpl atom)
+// ============================================================
+function readBoxType(dv, offset) {
+    return String.fromCharCode(dv.getUint8(offset), dv.getUint8(offset+1), dv.getUint8(offset+2), dv.getUint8(offset+3));
+}
+function findBoxes(dv) {
+    const boxes = [];
+    let pos = 0;
+    while (pos + 8 <= dv.byteLength) {
+        const size = dv.getUint32(pos);
+        if (size < 8 || pos + size > dv.byteLength) break;
+        const type = readBoxType(dv, pos + 4);
+        boxes.push({ type, data: new DataView(dv.buffer, dv.byteOffset + pos + 8, size - 8) });
+        pos += size;
+    }
+    return boxes;
+}
+function findBox(dv, type) {
+    for (const b of findBoxes(dv)) if (b.type === type) return b.data;
+    return null;
+}
+function parseChplBox(dv) {
+    try {
+        let p = 0;
+        const version = dv.getUint8(p); p += 1;
+        p += 3; // flags
+        if (version >= 1) p += 4; // reserved (newer chpl)
+        const count = dv.getUint8(p); p += 1;
+        const decoder = new TextDecoder('utf-8');
+        const chapters = [];
+        for (let i = 0; i < count && p + 9 <= dv.byteLength; i++) {
+            const ts100ns = Number(dv.getBigUint64(p)); p += 8;
+            const nameLen = dv.getUint8(p); p += 1;
+            if (p + nameLen > dv.byteLength) break;
+            const name = decoder.decode(new Uint8Array(dv.buffer, dv.byteOffset + p, nameLen));
+            p += nameLen;
+            chapters.push({ time: ts100ns / 1e7, title: name });
+        }
+        return chapters.length ? chapters : null;
+    } catch (_) { return null; }
+}
+async function readMp4Chapters(file) {
+    try {
+        let pos = 0;
+        const fileSize = file.size;
+        // Walk top-level atoms until we find moov (first 16MB only — moov is usually near the start for audiobooks)
+        const limit = Math.min(fileSize, 16 * 1024 * 1024);
+        while (pos + 8 < limit) {
+            const hdr = new DataView(await file.slice(pos, pos + 16).arrayBuffer());
+            let size = hdr.getUint32(0);
+            const type = readBoxType(hdr, 4);
+            let dataStart = pos + 8;
+            if (size === 1) {
+                size = Number(hdr.getBigUint64(8));
+                dataStart = pos + 16;
+            } else if (size === 0) {
+                size = fileSize - pos;
+            }
+            if (size <= 0) return null;
+            if (type === 'moov') {
+                const moov = new DataView(await file.slice(dataStart, pos + size).arrayBuffer());
+                const udta = findBox(moov, 'udta');
+                if (udta) {
+                    const chpl = findBox(udta, 'chpl');
+                    if (chpl) return parseChplBox(chpl);
+                }
+                return null;
+            }
+            pos += size;
+        }
+    } catch (e) {
+        console.warn('chapter parse failed', e);
+    }
+    return null;
+}
+
+// ============================================================
+// PLACEHOLDER COVER ART
+// ============================================================
+function hueFromString(s) {
+    let h = 0;
+    s = String(s || '?');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 360;
+}
+function placeholderArt(text) {
+    const t = String(text || '').trim() || '?';
+    const letters = t.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || t[0].toUpperCase();
+    const hue = hueFromString(t);
+    const id = 'g_' + hue + '_' + Math.random().toString(36).slice(2, 7);
+    return `<svg class="art-placeholder" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="hsl(${hue},42%,38%)"/>
+            <stop offset="100%" stop-color="hsl(${(hue + 35) % 360},48%,16%)"/>
+        </linearGradient></defs>
+        <rect width="200" height="200" fill="url(#${id})"/>
+        <text x="100" y="124" text-anchor="middle" font-family="-apple-system,SF Pro Display,system-ui,sans-serif" font-size="76" font-weight="700" fill="rgba(255,255,255,0.93)" letter-spacing="-2">${escapeHtml(letters)}</text>
+    </svg>`;
+}
+function artHTML(track) {
+    const url = track && artworkURL(track);
+    if (url) return `<img src="${url}" alt="">`;
+    return placeholderArt(track ? (track.album || track.title) : '?');
+}
+function albumArtHTML(album) {
+    const cover = album.tracks.find(t => t.artwork);
+    if (cover) return `<img src="${artworkURL(cover)}" alt="">`;
+    return placeholderArt(album.name);
+}
+
+// ============================================================
 // IMPORT
 // ============================================================
 async function importFiles(fileList) {
@@ -1469,10 +1584,16 @@ async function importFiles(fileList) {
 
     for (const file of files) {
         try {
-            const [tags, duration] = await Promise.all([readTags(file), getDuration(file)]);
+            const isMp4Family = /\.(m4a|m4b|mp4|aac)$/i.test(file.name || '');
+            const [tags, duration, chapters] = await Promise.all([
+                readTags(file),
+                getDuration(file),
+                isMp4Family ? readMp4Chapters(file) : Promise.resolve(null),
+            ]);
             const artworkBlob = tagPictureToBlob(tags.picture);
             const isAudiobook = (tags.genre || '').toLowerCase().includes('audiobook')
-                || (file.name || '').toLowerCase().endsWith('.m4b');
+                || (file.name || '').toLowerCase().endsWith('.m4b')
+                || (chapters && chapters.length > 1);
 
             const track = {
                 id: uid(),
@@ -1487,6 +1608,7 @@ async function importFiles(fileList) {
                 kind: isAudiobook ? 'audiobook' : 'music',
                 file: file,
                 artwork: artworkBlob,
+                chapters: chapters || null,
             };
 
             await dbPut('tracks', track);
@@ -1522,6 +1644,8 @@ async function loadAll() {
     state.audiobookIds = new Set(ab?.value || []);
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
+    // Backfill chapters for tracks imported before chapter parsing existed
+    backfillChapters().catch(() => {});
     audio.volume = state.settings.volume;
     audio.playbackRate = state.settings.speed;
     updateVolUI();
@@ -1531,6 +1655,29 @@ async function loadAll() {
 
 async function saveSettings() {
     await dbPut('meta', { key: 'settings', value: state.settings });
+}
+
+async function backfillChapters() {
+    let changed = false;
+    for (const t of state.tracks) {
+        if (t.chapters !== undefined && t.chapters !== null) continue;
+        if (t.chapters === null) continue; // already checked, none found
+        const name = (t.file && t.file.name) || '';
+        if (!/\.(m4a|m4b|mp4)$/i.test(name) || !t.file) {
+            t.chapters = null;
+            await dbPut('tracks', t);
+            continue;
+        }
+        try {
+            const chapters = await readMp4Chapters(t.file);
+            t.chapters = chapters || null;
+            await dbPut('tracks', t);
+            if (chapters && chapters.length > 1) changed = true;
+        } catch (_) {
+            t.chapters = null;
+        }
+    }
+    if (changed) render();
 }
 
 // ============================================================
@@ -1633,13 +1780,11 @@ function renderAlbumsView(albums, title, kind) {
 }
 
 function renderAlbumCard(album, kind) {
-    const cover = album.tracks.find(t => t.artwork);
-    const url = cover ? artworkURL(cover) : null;
     const detailKind = kind === 'audiobooks' ? 'audiobook' : 'album';
     return `
         <div class="album-card" onclick="openDetail('${detailKind}', ${jsArg(album.key)})">
-            <div class="album-art ${url ? '' : 'empty'}">
-                ${url ? `<img src="${url}" alt="">` : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>'}
+            <div class="album-art">
+                ${albumArtHTML(album)}
                 <button class="play-overlay" onclick="event.stopPropagation(); playAlbum(${jsArg(album.key)})">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
@@ -1712,26 +1857,28 @@ function renderTrackRow(t, i) {
 function renderAlbumDetail(key, isAudiobook) {
     const album = getAlbum(key);
     if (!album) { state.currentView = { kind: 'albums' }; return renderAlbumsView(getAlbums(), 'Albums', 'albums'); }
-    const cover = album.tracks.find(t => t.artwork);
-    const url = cover ? artworkURL(cover) : null;
     const totalSec = album.tracks.reduce((s, t) => s + (t.duration || 0), 0);
     const trackIds = album.tracks.map(t => t.id);
+    // Single-file audiobook with embedded chapters → show chapters instead of tracks
+    const singleWithChapters = isAudiobook && album.tracks.length === 1 && Array.isArray(album.tracks[0].chapters) && album.tracks[0].chapters.length > 1;
+    const itemCount = singleWithChapters ? album.tracks[0].chapters.length : album.tracks.length;
+    const itemLabel = isAudiobook ? 'chapter' : 'track';
     return `
         <div class="detail-hero">
-            <div class="detail-art">${url ? `<img src="${url}" alt="">` : ''}</div>
+            <div class="detail-art">${albumArtHTML(album)}</div>
             <div class="detail-info">
                 <div class="detail-kind">${isAudiobook ? 'Audiobook' : 'Album'}</div>
                 <div class="detail-name">${escapeHtml(album.name)}</div>
                 <div class="detail-author">${escapeHtml(album.artist)}</div>
-                <div class="detail-stats">${album.tracks.length} ${isAudiobook ? 'chapter' : 'track'}${album.tracks.length !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
+                <div class="detail-stats">${itemCount} ${itemLabel}${itemCount !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
                 <div class="detail-actions">
                     <button class="btn-play" onclick="playList(${jsArg(trackIds)})">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         Play
                     </button>
-                    <button class="btn-icon" onclick="shufflePlay(${jsArg(trackIds)})" title="Shuffle">
+                    ${singleWithChapters ? '' : `<button class="btn-icon" onclick="shufflePlay(${jsArg(trackIds)})" title="Shuffle">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-                    </button>
+                    </button>`}
                     <button class="btn-icon" onclick="toggleAudiobook(${jsArg(key)})" title="${isAudiobook ? 'Treat as music album' : 'Mark as audiobook'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                     </button>
@@ -1741,19 +1888,42 @@ function renderAlbumDetail(key, isAudiobook) {
                 </div>
             </div>
         </div>
-        ${renderTrackList(album.tracks)}`;
+        ${singleWithChapters ? renderChapterList(album.tracks[0]) : renderTrackList(album.tracks)}`;
+}
+
+function renderChapterList(track) {
+    const chapters = track.chapters;
+    return `
+        <div class="track-list-header">
+            <div>#</div>
+            <div>Chapter</div>
+            <div>Album</div>
+            <div>Time</div>
+            <div></div>
+        </div>
+        <div class="track-list">
+            ${chapters.map((ch, i) => {
+                const next = chapters[i + 1];
+                const dur = (next ? next.time : (track.duration || 0)) - ch.time;
+                return `<div class="track-row" data-chapter-idx="${i}" onclick="playChapter(${jsArg(track.id)}, ${i})">
+                    <div class="track-num"><span>${i + 1}</span></div>
+                    <div class="track-title">${escapeHtml(ch.title || ('Chapter ' + (i + 1)))}<div style="font-size:12px;color:var(--text-dim);font-weight:400;margin-top:2px">Starts at ${fmtTime(ch.time)}</div></div>
+                    <div class="track-meta"></div>
+                    <div class="track-time">${fmtTime(dur)}</div>
+                    <div></div>
+                </div>`;
+            }).join('')}
+        </div>`;
 }
 
 function renderPlaylistDetail(id) {
     const pl = state.playlists.find(p => p.id === id);
     if (!pl) { state.currentView = { kind: 'albums' }; return renderAlbumsView(getAlbums(), 'Albums', 'albums'); }
     const tracks = pl.trackIds.map(tid => state.tracks.find(t => t.id === tid)).filter(Boolean);
-    const cover = tracks.find(t => t.artwork);
-    const url = cover ? artworkURL(cover) : null;
     const totalSec = tracks.reduce((s, t) => s + (t.duration || 0), 0);
     return `
         <div class="detail-hero">
-            <div class="detail-art">${url ? `<img src="${url}" alt="">` : ''}</div>
+            <div class="detail-art">${tracks.length ? albumArtHTML({ name: pl.name, tracks }) : placeholderArt(pl.name)}</div>
             <div class="detail-info">
                 <div class="detail-kind">Playlist</div>
                 <div class="detail-name">${escapeHtml(pl.name)}</div>
@@ -1908,7 +2078,26 @@ function togglePlay() {
     updatePlayUI();
 }
 
+// When the current track has embedded chapters, the prev/next buttons jump
+// between chapters instead of between tracks.
+function currentChapters() {
+    const t = state.currentTrack;
+    return (t && Array.isArray(t.chapters) && t.chapters.length > 1) ? t.chapters : null;
+}
+function currentChapterIdx() {
+    const chs = currentChapters();
+    if (!chs) return -1;
+    const now = audio.currentTime || 0;
+    for (let i = chs.length - 1; i >= 0; i--) if (now >= chs[i].time - 0.25) return i;
+    return 0;
+}
+
 async function nextTrack() {
+    const chs = currentChapters();
+    if (chs) {
+        const i = currentChapterIdx();
+        if (i < chs.length - 1) { audio.currentTime = chs[i + 1].time; return; }
+    }
     if (!state.queue.length) return;
     if (state.settings.shuffle) {
         state.queueIdx = Math.floor(Math.random() * state.queue.length);
@@ -1925,12 +2114,43 @@ async function nextTrack() {
 }
 
 async function prevTrack() {
+    const chs = currentChapters();
+    if (chs) {
+        const i = currentChapterIdx();
+        // If we're more than 3s into the current chapter, restart it; else go to previous chapter
+        const chapterStart = chs[i]?.time || 0;
+        if ((audio.currentTime || 0) - chapterStart > 3 || i === 0) {
+            audio.currentTime = chapterStart;
+            return;
+        }
+        audio.currentTime = chs[i - 1].time;
+        return;
+    }
     if (!state.queue.length) return;
     if (audio.currentTime > 3) { audio.currentTime = 0; return; }
     if (state.queueIdx > 0) state.queueIdx--;
     else if (state.settings.repeat === 'all') state.queueIdx = state.queue.length - 1;
     else { audio.currentTime = 0; return; }
     await playCurrent();
+}
+
+// Jump directly to a chapter of a specific track (used from the chapter list UI)
+async function playChapter(trackId, chapterIdx) {
+    // Ensure this track is loaded as the queue
+    if (!state.currentTrack || state.currentTrack.id !== trackId) {
+        state.queue = [trackId];
+        state.queueIdx = 0;
+        await playCurrent();
+    }
+    const track = state.tracks.find(t => t.id === trackId);
+    const ch = track?.chapters?.[chapterIdx];
+    if (!ch) return;
+    // Wait for metadata if seeking right after load
+    if (audio.readyState < 1) {
+        await new Promise(res => audio.addEventListener('loadedmetadata', res, { once: true }));
+    }
+    audio.currentTime = ch.time;
+    if (audio.paused) audio.play().catch(() => {});
 }
 
 function updatePlayUI() {
@@ -1947,9 +2167,9 @@ function updateTrackInfo() {
     $('player-artist').textContent = t.artist;
     $('np-title').textContent = t.title;
     $('np-artist').textContent = `${t.artist} — ${t.album}`;
-    const url = artworkURL(t);
-    $('player-art').innerHTML = url ? `<img src="${url}" alt="">` : '';
-    $('np-art').innerHTML = url ? `<img src="${url}" alt="">` : '';
+    const html = artHTML(t);
+    $('player-art').innerHTML = html;
+    $('np-art').innerHTML = html;
 }
 
 function updateMediaSession(track) {
@@ -2584,6 +2804,7 @@ window.createPlaylist = createPlaylist;
 window.hideModal = hideModal;
 window.newPlaylistPrompt = newPlaylistPrompt;
 window.showTrackMenu = showTrackMenu;
+window.playChapter = playChapter;
 
 // ============================================================
 // INIT
