@@ -1105,7 +1105,92 @@
 
         @media (min-width: 881px) { .sidebar-backdrop { display: none !important; } }
 
-        /* ===== ADDED: play/pause swap, build-stamp pill, refresh banner, etc. ===== */
+        /* ===== ADDED: gold diamond pattern background, Home feed, etc. ===== */
+        .main {
+            background-image:
+                linear-gradient(180deg, var(--surface) 0%, var(--bg) 320px),
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 0l14 14-14 14L0 14z' fill='none' stroke='%23c9a961' stroke-opacity='0.07' stroke-width='0.6'/></svg>");
+            background-attachment: scroll, fixed;
+            background-repeat: no-repeat, repeat;
+        }
+
+        /* Home view */
+        .home-hero {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 8px 0 18px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .home-hero-eyebrow {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .home-hero-title {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.7px;
+            background: linear-gradient(135deg, var(--accent-bright), var(--accent-dim));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .home-hero-sub {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+        .home-section { margin: 22px 0 4px; }
+        .home-section-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .home-section-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .home-section-link {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+        }
+        .home-section-link:hover { color: var(--accent); background: var(--surface); }
+
+        .home-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 18px 14px;
+        }
+        .home-row-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            scrollbar-width: thin;
+        }
+        .home-row-scroll::-webkit-scrollbar { height: 8px; }
+        .home-row-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+        .home-row-scroll .home-card { flex: 0 0 142px; }
+        .home-card-narrow { flex: 0 0 142px; }
+        .home-card .album-art { box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+
+        /* Make the topbar lighter so content lands closer to the top */
+        .content { padding-top: 14px; }
+
+
         .play-btn .icon-pause, .np-play .icon-pause { display: none; }
         .play-btn.is-playing .icon-play, .np-play.is-playing .icon-play { display: none; }
         .play-btn.is-playing .icon-pause, .np-play.is-playing .icon-pause { display: block; }
@@ -1319,7 +1404,11 @@
 
         <div class="nav-section">
             <div class="nav-label">Library</div>
-            <div class="nav-item active" data-view="albums">
+            <div class="nav-item active" data-view="home">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
+                <span class="label">Home</span>
+            </div>
+            <div class="nav-item" data-view="albums">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
                 <span class="label">Albums</span>
                 <span class="count" id="albums-count"></span>
@@ -1522,7 +1611,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v9-2026-04-26-playpause';
+const BUILD = 'v10-2026-04-26-home';
 document.getElementById('build-pill').textContent = BUILD;
 
 // Poll sw.js to detect new deploys; show banner when it changes.
@@ -1617,7 +1706,7 @@ const state = {
     playlists: [],
     audiobookIds: new Set(),
     settings: { volume: 0.8, speed: 1, repeat: 'off', shuffle: false },
-    currentView: { kind: 'albums', id: null },
+    currentView: { kind: 'home', id: null },
     queue: [],
     queueIdx: -1,
     currentTrack: null,
@@ -2407,7 +2496,8 @@ function renderPlaylistDetail(id) {
 function render() {
     const c = $('content');
     const v = state.currentView;
-    if (v.kind === 'albums') c.innerHTML = renderAlbumsView(getAlbums(), 'Albums', 'albums');
+    if (v.kind === 'home') c.innerHTML = renderHomeView();
+    else if (v.kind === 'albums') c.innerHTML = renderAlbumsView(getAlbums(), 'Albums', 'albums');
     else if (v.kind === 'audiobooks') c.innerHTML = renderAlbumsView(getAudiobooks(), 'Audiobooks', 'audiobooks');
     else if (v.kind === 'songs') c.innerHTML = renderSongsView();
     else if (v.kind === 'recents') c.innerHTML = renderRecentsView();
@@ -2416,8 +2506,110 @@ function render() {
     else if (v.kind === 'playlist') c.innerHTML = renderPlaylistDetail(v.id);
 
     bindTrackRows();
+    bindHomeCards();
     refreshSidebarCounts();
     refreshNavActive();
+}
+
+function bindHomeCards() {
+    document.querySelectorAll('.home-row [data-album-key]').forEach(el => {
+        el.addEventListener('click', () => {
+            const kind = el.dataset.albumKind === 'audiobook' ? 'audiobook' : 'album';
+            openDetail(kind, el.dataset.albumKey);
+        });
+    });
+    document.querySelectorAll('.home-row .play-overlay[data-album-key]').forEach(b => {
+        b.addEventListener('click', (e) => { e.stopPropagation(); playAlbum(b.dataset.albumKey); });
+    });
+    document.querySelectorAll('.home-section-link').forEach(el => {
+        el.addEventListener('click', () => navTo(el.dataset.target));
+    });
+}
+
+function renderHomeView() {
+    if (!state.tracks.length) return renderEmptyLibrary();
+
+    const recents = [...state.tracks].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 12);
+    const audiobooks = getAudiobooks();
+    const albums = getAlbums();
+
+    const recentRow = recents.length ? `
+        <section class="home-section">
+            <div class="home-section-head">
+                <h2 class="home-section-title">Recently Added</h2>
+                <button class="home-section-link" data-target="recents">View all</button>
+            </div>
+            <div class="home-row home-row-scroll">
+                ${recents.map(t => renderHomeTrackCard(t)).join('')}
+            </div>
+        </section>` : '';
+
+    const audiobookRow = audiobooks.length ? `
+        <section class="home-section">
+            <div class="home-section-head">
+                <h2 class="home-section-title">Audiobooks</h2>
+                <button class="home-section-link" data-target="audiobooks">View all (${audiobooks.length})</button>
+            </div>
+            <div class="home-row">
+                ${audiobooks.slice(0, 8).map(a => renderHomeAlbumCard(a, 'audiobook')).join('')}
+            </div>
+        </section>` : '';
+
+    const albumRow = albums.length ? `
+        <section class="home-section">
+            <div class="home-section-head">
+                <h2 class="home-section-title">Albums</h2>
+                <button class="home-section-link" data-target="albums">View all (${albums.length})</button>
+            </div>
+            <div class="home-row">
+                ${albums.slice(0, 8).map(a => renderHomeAlbumCard(a, 'album')).join('')}
+            </div>
+        </section>` : '';
+
+    return `
+        <div class="home-hero">
+            <div class="home-hero-text">
+                <div class="home-hero-eyebrow">Hifi</div>
+                <div class="home-hero-title">Your library</div>
+                <div class="home-hero-sub">${state.tracks.length} track${state.tracks.length !== 1 ? 's' : ''} · ${albums.length} album${albums.length !== 1 ? 's' : ''} · ${audiobooks.length} audiobook${audiobooks.length !== 1 ? 's' : ''}</div>
+            </div>
+        </div>
+        ${recentRow}
+        ${audiobookRow}
+        ${albumRow}
+    `;
+}
+
+function renderHomeAlbumCard(album, kind) {
+    return `
+        <div class="album-card home-card" data-album-key="${escapeHtml(album.key)}" data-album-kind="${kind}">
+            <div class="album-art">
+                ${albumArtHTML(album)}
+                <button class="play-overlay" data-album-key="${escapeHtml(album.key)}" title="Play">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+            </div>
+            <div class="album-name">${escapeHtml(album.name)}</div>
+            <div class="album-artist">${escapeHtml(album.artist)}</div>
+        </div>`;
+}
+
+function renderHomeTrackCard(t) {
+    const albumKeyVal = albumKey(t);
+    const isAb = state.audiobookIds.has(albumKeyVal) || t.kind === 'audiobook';
+    const kind = isAb ? 'audiobook' : 'album';
+    const fakeAlbum = { name: t.album, artist: t.artist, tracks: [t] };
+    return `
+        <div class="album-card home-card home-card-narrow" data-album-key="${escapeHtml(albumKeyVal)}" data-album-kind="${kind}">
+            <div class="album-art">
+                ${albumArtHTML(fakeAlbum)}
+                <button class="play-overlay" data-album-key="${escapeHtml(albumKeyVal)}" title="Play">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+            </div>
+            <div class="album-name">${escapeHtml(t.title)}</div>
+            <div class="album-artist">${escapeHtml(t.artist)}</div>
+        </div>`;
 }
 
 function bindTrackRows() {
