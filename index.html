@@ -1105,7 +1105,52 @@
 
         @media (min-width: 881px) { .sidebar-backdrop { display: none !important; } }
 
-        /* ===== ADDED: format badges, EQ, A-B, bookmarks, speed picker, np chapters ===== */
+        /* ===== ADDED: play/pause swap, build-stamp pill, refresh banner, etc. ===== */
+        .play-btn .icon-pause, .np-play .icon-pause { display: none; }
+        .play-btn.is-playing .icon-play, .np-play.is-playing .icon-play { display: none; }
+        .play-btn.is-playing .icon-pause, .np-play.is-playing .icon-pause { display: block; }
+
+        /* Build version pill (bottom-right, very low key) */
+        .build-pill {
+            position: fixed;
+            right: 8px;
+            bottom: calc(8px + var(--safe-bottom));
+            z-index: 200;
+            font: 10px/1 -apple-system, monospace;
+            color: var(--text-faint);
+            background: rgba(20,20,26,0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            padding: 4px 7px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            opacity: 0.6;
+            pointer-events: none;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* "New version available — tap to reload" banner */
+        .update-banner {
+            position: fixed;
+            left: 50%;
+            bottom: calc(var(--player-h) + 12px + var(--safe-bottom));
+            transform: translateX(-50%);
+            z-index: 220;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--accent);
+            color: var(--bg-deep);
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 999px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+        .update-banner.show { display: inline-flex; }
+
+
         .fmt-badge {
             display: inline-block;
             font-size: 10px;
@@ -1350,8 +1395,8 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.99 4V2L6 6l5.99 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor" stroke="none"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="700" fill="var(--bg-deep)" stroke="none">15</text></svg>
                 </button>
                 <button class="play-btn" id="play-btn" title="Play / Pause (Space)">
-                    <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+                    <svg id="play-icon" class="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pause-icon" class="icon-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
                 </button>
                 <button class="ctrl-btn seek-btn" id="fwd15-btn" title="Skip forward 15 seconds">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2l5.99 4L12 10V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor" stroke="none"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="700" fill="var(--bg-deep)" stroke="none">15</text></svg>
@@ -1410,8 +1455,8 @@
             <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.99 4V2L6 6l5.99 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor" stroke="none"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="700" fill="var(--bg-deep)" stroke="none">15</text></svg>
         </button>
         <button class="np-play" id="np-play" title="Play / Pause">
-            <svg id="np-play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <svg id="np-pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+            <svg id="np-play-icon" class="icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="np-pause-icon" class="icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
         </button>
         <button class="ctrl-btn np-seek" id="np-fwd15" title="Skip forward 15s">
             <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2l5.99 4L12 10V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor" stroke="none"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="700" fill="var(--bg-deep)" stroke="none">15</text></svg>
@@ -1462,6 +1507,10 @@
 <!-- ===== TOAST ===== -->
 <div class="toast" id="toast"></div>
 
+<!-- ===== BUILD VERSION PILL + REFRESH BANNER ===== -->
+<div class="build-pill" id="build-pill">v?</div>
+<div class="update-banner" id="update-banner" onclick="location.reload()">🔄 New version available — tap to reload</div>
+
 <!-- ===== HIDDEN FILE INPUT ===== -->
 <input type="file" class="file-input" id="file-input" multiple accept="audio/*,.mp3,.m4a,.m4b,.aac,.ogg,.opus,.wav,.flac,.weba">
 
@@ -1469,6 +1518,33 @@
 
 <script>
 'use strict';
+
+// ============================================================
+// BUILD VERSION (bumped on every deploy)
+// ============================================================
+const BUILD = 'v9-2026-04-26-playpause';
+document.getElementById('build-pill').textContent = BUILD;
+
+// Poll sw.js to detect new deploys; show banner when it changes.
+async function checkForNewBuild(initial) {
+    try {
+        const r = await fetch('sw.js?_=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return null;
+        const txt = await r.text();
+        const m = txt.match(/CACHE\s*=\s*['"]([^'"]+)['"]/);
+        return m ? m[1] : null;
+    } catch (_) { return null; }
+}
+(async () => {
+    const initial = await checkForNewBuild(true);
+    if (!initial) return;
+    setInterval(async () => {
+        const cur = await checkForNewBuild(false);
+        if (cur && cur !== initial) {
+            document.getElementById('update-banner').classList.add('show');
+        }
+    }, 60000);
+})();
 
 // ============================================================
 // INDEXEDDB LAYER
@@ -2532,14 +2608,19 @@ async function playChapter(trackId, chapterIdx) {
 }
 
 function updatePlayUI() {
-    // Derive directly from the audio element. state.isPlaying is kept in sync
-    // by the play/pause listeners but the DOM is the source of truth.
+    // Toggle a CSS class on the buttons; the .icon-play/.icon-pause inside
+    // each button switch via CSS. This is more reliable than the [hidden]
+    // attribute (some browsers don't apply UA display:none to inline SVG
+    // children of flex containers).
     const playing = !!state.currentTrack && !audio.paused && !audio.ended;
-    $('play-icon').hidden = playing;
-    $('pause-icon').hidden = !playing;
-    $('np-play-icon').hidden = playing;
-    $('np-pause-icon').hidden = !playing;
+    $('play-btn').classList.toggle('is-playing', playing);
+    $('np-play').classList.toggle('is-playing', playing);
     $('play-btn').classList.toggle('loading', !!state.currentTrack && audio.readyState < 3 && !audio.paused);
+    // Belt-and-braces for older Safari: also explicitly toggle inline display.
+    $('play-icon').style.display = playing ? 'none' : '';
+    $('pause-icon').style.display = playing ? '' : 'none';
+    $('np-play-icon').style.display = playing ? 'none' : '';
+    $('np-pause-icon').style.display = playing ? '' : 'none';
 }
 
 function updateTrackInfo() {

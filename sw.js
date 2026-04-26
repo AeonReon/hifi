@@ -1,4 +1,4 @@
-const CACHE = 'hifi-v8';
+const CACHE = 'hifi-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -20,9 +20,29 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Strategy:
+//   - HTML (the app shell): network-first so users get the latest play/pause
+//     logic without waiting for a manual refresh; fall back to cache offline.
+//   - Everything else: cache-first.
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  const isHTML = req.mode === 'navigate'
+    || url.pathname === '/'
+    || url.pathname.endsWith('.html');
+  if (isHTML) {
+    e.respondWith(
+      fetch(req).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone)).catch(() => {});
+        }
+        return res;
+      }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(req).then(hit => hit || fetch(req).then(res => {
       if (res && res.status === 200 && (res.type === 'basic' || res.type === 'cors')) {
