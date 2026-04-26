@@ -1104,6 +1104,162 @@
         .sidebar-backdrop.active { display: block; }
 
         @media (min-width: 881px) { .sidebar-backdrop { display: none !important; } }
+
+        /* ===== ADDED: format badges, EQ, A-B, bookmarks, speed picker, np chapters ===== */
+        .fmt-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--surface-2);
+            color: var(--text-dim);
+            margin-left: 6px;
+            border: 1px solid var(--border);
+            vertical-align: 1px;
+        }
+        .fmt-badge.warn { background: rgba(199, 92, 92, 0.18); color: var(--danger); border-color: rgba(199, 92, 92, 0.3); }
+        .fmt-badge.bm { background: rgba(201, 169, 97, 0.15); color: var(--accent); border-color: rgba(201, 169, 97, 0.3); }
+        .track-row.unsupported { opacity: 0.7; }
+
+        /* Speed picker */
+        .speed-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 12px 0 4px;
+        }
+        .speed-pick {
+            padding: 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: background 0.12s, border-color 0.12s;
+        }
+        .speed-pick:hover { background: var(--card-hover); }
+        .speed-pick.active { background: var(--accent); color: var(--bg-deep); border-color: var(--accent-bright); }
+
+        /* EQ modal */
+        .eq-toggle { display: flex; align-items: center; gap: 10px; padding: 6px 0 12px; font-size: 14px; color: var(--text-dim); }
+        .eq-toggle input { width: 16px; height: 16px; }
+        .eq-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 56px;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .eq-row input[type=range] { width: 100%; accent-color: var(--accent); }
+        .eq-val { text-align: right; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+        .eq-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+        .eq-presets .ctx-item {
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .eq-presets .ctx-item:hover { background: var(--card-hover); border-color: var(--border-strong); }
+
+        /* A-B button */
+        .ab-btn {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            min-width: 44px;
+            padding: 0 8px;
+            color: var(--text-dim);
+        }
+        .ab-btn.active { color: var(--accent); background: var(--accent-glow); }
+
+        /* Bookmarks modal */
+        .bm-list { max-height: 320px; overflow-y: auto; margin: 6px 0 10px; }
+        .bm-row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+        .bm-jump {
+            flex: 1;
+            text-align: left;
+            padding: 9px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+        }
+        .bm-jump:hover { background: var(--card-hover); }
+        .bm-del {
+            width: 32px;
+            height: 32px;
+            border-radius: 7px;
+            background: var(--surface-2);
+            color: var(--text-faint);
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .bm-del:hover { color: var(--danger); }
+
+        /* Loading ring on play button */
+        .play-btn.loading::before {
+            content: "";
+            position: absolute;
+            inset: -3px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-deep);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .play-btn { position: relative; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Now-playing chapter list */
+        .np-chapters {
+            width: min(560px, 92vw);
+            margin: 18px auto 8px;
+            padding: 14px 16px 6px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            max-height: 36vh;
+            overflow-y: auto;
+        }
+        .np-chapters-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-faint);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .np-chapters-list { display: flex; flex-direction: column; gap: 2px; }
+        .np-chapter {
+            display: grid;
+            grid-template-columns: 28px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            text-align: left;
+            padding: 9px 10px;
+            border-radius: 8px;
+            color: var(--text-dim);
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.1s, color 0.1s;
+        }
+        .np-chapter:hover { background: var(--card-hover); color: var(--text); }
+        .np-chapter.playing { background: var(--accent-glow); color: var(--accent); }
+        .np-chapter-num { font-variant-numeric: tabular-nums; color: var(--text-faint); font-weight: 600; }
+        .np-chapter-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .np-chapter-time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-faint); }
     </style>
 </head>
 <body>
@@ -1265,17 +1421,26 @@
         </button>
     </div>
     <div class="np-extras">
-        <button class="ctrl-btn dim" id="np-shuffle">
+        <button class="ctrl-btn dim" id="np-shuffle" title="Shuffle">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
         </button>
-        <button class="ctrl-btn dim" id="np-repeat">
+        <button class="ctrl-btn dim" id="np-repeat" title="Repeat">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
-        <button class="speed-btn" id="np-speed">1×</button>
-        <button class="ctrl-btn" id="np-sleep">
+        <button class="speed-btn" id="np-speed" title="Playback speed">1×</button>
+        <button class="ctrl-btn" id="np-eq" title="Equalizer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="4" x2="6" y2="14"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="12" y1="4" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="20"/><line x1="18" y1="4" x2="18" y2="16"/><line x1="18" y1="20" x2="18" y2="20.01"/><circle cx="6" cy="16" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        </button>
+        <button class="ctrl-btn ab-btn" id="np-ab" title="A-B loop (tap A, tap again for B)">A-B</button>
+        <button class="ctrl-btn" id="np-bookmark" title="Add bookmark (B)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="ctrl-btn" id="np-sleep" title="Sleep timer">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
     </div>
+    <!-- Chapter list (audiobooks with embedded chapters) -->
+    <div class="np-chapters" id="np-chapters" hidden></div>
 </div>
 
 <!-- ===== DROP OVERLAY ===== -->
@@ -1438,17 +1603,35 @@ function inferMimeType(file) {
     const m = name.match(/\.([a-z0-9]+)$/);
     const ext = m ? m[1] : '';
     return {
-        mp3: 'audio/mpeg',
-        m4a: 'audio/mp4',
-        m4b: 'audio/mp4',
+        mp3: 'audio/mpeg', mp2: 'audio/mpeg', mpga: 'audio/mpeg',
+        m4a: 'audio/mp4', m4b: 'audio/mp4', mp4: 'audio/mp4',
         aac: 'audio/aac',
-        ogg: 'audio/ogg',
-        opus: 'audio/ogg',
-        wav: 'audio/wav',
+        ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg',
+        wav: 'audio/wav', wave: 'audio/wav',
         flac: 'audio/flac',
-        weba: 'audio/webm',
+        weba: 'audio/webm', webm: 'audio/webm',
         wma: 'audio/x-ms-wma',
+        aif: 'audio/aiff', aiff: 'audio/aiff', aifc: 'audio/aiff',
+        ape: 'audio/x-ape',
+        amr: 'audio/amr',
     }[ext] || 'audio/mpeg';
+}
+
+// Test whether the browser will play a given file. Returns 'probably', 'maybe', or '' (no).
+function canBrowserPlay(file) {
+    try {
+        const probe = document.createElement('audio');
+        const mt = inferMimeType(file);
+        const r = probe.canPlayType(mt);
+        if (r) return r;
+        // Try with a codec hint — some browsers need it for AAC inside mp4
+        const ext = ((file.name || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+        const codecHints = { m4a: 'mp4a.40.2', m4b: 'mp4a.40.2', aac: 'mp4a.40.2', flac: 'flac', opus: 'opus' };
+        if (codecHints[ext.toLowerCase()]) {
+            return probe.canPlayType(`${mt}; codecs="${codecHints[ext.toLowerCase()]}"`);
+        }
+        return '';
+    } catch (_) { return ''; }
 }
 
 // Return a Blob with a guaranteed, correct MIME type so createObjectURL
@@ -1462,33 +1645,54 @@ function playableBlob(track) {
 }
 
 // ============================================================
-// MP4 CHAPTER PARSER (chpl atom)
+// MP4 CHAPTER PARSER
+// Supports:
+//   - moov anywhere in the file (start, middle, or end)
+//   - Nero `chpl` atoms (older / Audible-style m4b)
+//   - QuickTime chapter reference tracks (`tref/chap` → text track)
 // ============================================================
 function readBoxType(dv, offset) {
     return String.fromCharCode(dv.getUint8(offset), dv.getUint8(offset+1), dv.getUint8(offset+2), dv.getUint8(offset+3));
 }
-function findBoxes(dv) {
-    const boxes = [];
+function findAllBoxes(dv, type) {
+    const out = [];
     let pos = 0;
     while (pos + 8 <= dv.byteLength) {
-        const size = dv.getUint32(pos);
+        let size = dv.getUint32(pos);
+        const t = readBoxType(dv, pos + 4);
+        let dataStart = pos + 8;
+        if (size === 1) {
+            if (pos + 16 > dv.byteLength) break;
+            size = Number(dv.getBigUint64(pos + 8));
+            dataStart = pos + 16;
+        } else if (size === 0) {
+            size = dv.byteLength - pos;
+        }
         if (size < 8 || pos + size > dv.byteLength) break;
-        const type = readBoxType(dv, pos + 4);
-        boxes.push({ type, data: new DataView(dv.buffer, dv.byteOffset + pos + 8, size - 8) });
+        if (t === type) out.push(new DataView(dv.buffer, dv.byteOffset + dataStart, pos + size - dataStart));
         pos += size;
     }
-    return boxes;
+    return out;
 }
 function findBox(dv, type) {
-    for (const b of findBoxes(dv)) if (b.type === type) return b.data;
-    return null;
+    const all = findAllBoxes(dv, type);
+    return all.length ? all[0] : null;
 }
+function findPath(dv, ...types) {
+    let cur = dv;
+    for (const t of types) {
+        cur = findBox(cur, t);
+        if (!cur) return null;
+    }
+    return cur;
+}
+
 function parseChplBox(dv) {
     try {
         let p = 0;
         const version = dv.getUint8(p); p += 1;
         p += 3; // flags
-        if (version >= 1) p += 4; // reserved (newer chpl)
+        if (version >= 1) p += 4; // reserved
         const count = dv.getUint8(p); p += 1;
         const decoder = new TextDecoder('utf-8');
         const chapters = [];
@@ -1503,35 +1707,188 @@ function parseChplBox(dv) {
         return chapters.length ? chapters : null;
     } catch (_) { return null; }
 }
+
+// Walk top-level atoms in the whole file (not just first 16MB) to find moov.
+async function findMoovDataView(file) {
+    let pos = 0;
+    const fileSize = file.size;
+    while (pos + 8 < fileSize) {
+        const hdr = new DataView(await file.slice(pos, pos + 16).arrayBuffer());
+        let size = hdr.getUint32(0);
+        const type = readBoxType(hdr, 4);
+        let dataStart = pos + 8;
+        if (size === 1) {
+            size = Number(hdr.getBigUint64(8));
+            dataStart = pos + 16;
+        } else if (size === 0) {
+            size = fileSize - pos;
+        }
+        if (size <= 0) return null;
+        if (type === 'moov') {
+            return new DataView(await file.slice(dataStart, pos + size).arrayBuffer());
+        }
+        pos += size;
+    }
+    return null;
+}
+
+// Parse stts (sample-to-time) — list of (count, delta) pairs giving sample durations.
+function parseStts(dv) {
+    if (!dv) return null;
+    const entries = [];
+    const count = dv.getUint32(4);
+    let p = 8;
+    for (let i = 0; i < count && p + 8 <= dv.byteLength; i++) {
+        entries.push({ count: dv.getUint32(p), delta: dv.getUint32(p + 4) });
+        p += 8;
+    }
+    return entries;
+}
+function parseStsz(dv) {
+    if (!dv) return null;
+    const sampleSize = dv.getUint32(4);
+    const count = dv.getUint32(8);
+    if (sampleSize !== 0) return new Array(count).fill(sampleSize);
+    const out = [];
+    let p = 12;
+    for (let i = 0; i < count && p + 4 <= dv.byteLength; i++) {
+        out.push(dv.getUint32(p));
+        p += 4;
+    }
+    return out;
+}
+function parseStsc(dv) {
+    if (!dv) return null;
+    const count = dv.getUint32(4);
+    const entries = [];
+    let p = 8;
+    for (let i = 0; i < count && p + 12 <= dv.byteLength; i++) {
+        entries.push({ firstChunk: dv.getUint32(p), samplesPerChunk: dv.getUint32(p + 4), descIdx: dv.getUint32(p + 8) });
+        p += 12;
+    }
+    return entries;
+}
+function parseStco(dv, is64) {
+    if (!dv) return null;
+    const count = dv.getUint32(4);
+    const out = [];
+    let p = 8;
+    const step = is64 ? 8 : 4;
+    for (let i = 0; i < count && p + step <= dv.byteLength; i++) {
+        out.push(is64 ? Number(dv.getBigUint64(p)) : dv.getUint32(p));
+        p += step;
+    }
+    return out;
+}
+function readMdhdTimescale(dv) {
+    const v = dv.getUint8(0);
+    return dv.getUint32(v === 1 ? 20 : 12);
+}
+function readTrackId(tkhd) {
+    const v = tkhd.getUint8(0);
+    return tkhd.getUint32(v === 1 ? 20 : 12);
+}
+
+// Compute file offsets for every sample in a track from stsc + stco + stsz.
+function computeSampleOffsets(stsc, stsz, chunkOffsets) {
+    const offsets = new Array(stsz.length);
+    let sampleIdx = 0;
+    for (let chunkIdx = 0; chunkIdx < chunkOffsets.length; chunkIdx++) {
+        // find stsc entry that covers this chunk
+        let perChunk = 1;
+        for (let k = stsc.length - 1; k >= 0; k--) {
+            if (stsc[k].firstChunk - 1 <= chunkIdx) { perChunk = stsc[k].samplesPerChunk; break; }
+        }
+        let off = chunkOffsets[chunkIdx];
+        for (let s = 0; s < perChunk && sampleIdx < stsz.length; s++) {
+            offsets[sampleIdx] = off;
+            off += stsz[sampleIdx];
+            sampleIdx++;
+        }
+    }
+    return offsets;
+}
+function computeSampleTimes(stts, timescale) {
+    const times = [];
+    let t = 0;
+    for (const e of stts) {
+        for (let i = 0; i < e.count; i++) {
+            times.push(t / timescale);
+            t += e.delta;
+        }
+    }
+    return times;
+}
+
+async function parseQtChapters(file, moov) {
+    const traks = findAllBoxes(moov, 'trak');
+    if (!traks.length) return null;
+
+    // Find a trak that references chapters via tref→chap
+    let chapterTrackIds = null;
+    for (const trak of traks) {
+        const tref = findBox(trak, 'tref');
+        if (!tref) continue;
+        const chap = findBox(tref, 'chap');
+        if (!chap) continue;
+        chapterTrackIds = [];
+        for (let i = 0; i + 4 <= chap.byteLength; i += 4) chapterTrackIds.push(chap.getUint32(i));
+        break;
+    }
+    if (!chapterTrackIds || !chapterTrackIds.length) return null;
+
+    // Locate the chapter track
+    let chapterTrak = null;
+    for (const trak of traks) {
+        const tkhd = findBox(trak, 'tkhd');
+        if (!tkhd) continue;
+        if (chapterTrackIds.includes(readTrackId(tkhd))) { chapterTrak = trak; break; }
+    }
+    if (!chapterTrak) return null;
+
+    const mdhd = findPath(chapterTrak, 'mdia', 'mdhd');
+    const timescale = mdhd ? readMdhdTimescale(mdhd) : 1000;
+    const stbl = findPath(chapterTrak, 'mdia', 'minf', 'stbl');
+    if (!stbl) return null;
+
+    const stts = parseStts(findBox(stbl, 'stts'));
+    const stsz = parseStsz(findBox(stbl, 'stsz'));
+    const stsc = parseStsc(findBox(stbl, 'stsc'));
+    const co64 = findBox(stbl, 'co64');
+    const stco = co64 || findBox(stbl, 'stco');
+    if (!stts || !stsz || !stsc || !stco) return null;
+    const chunkOffsets = parseStco(stco, !!co64);
+    const sampleOffsets = computeSampleOffsets(stsc, stsz, chunkOffsets);
+    const sampleTimes = computeSampleTimes(stts, timescale);
+
+    const decoder = new TextDecoder('utf-8');
+    const chapters = [];
+    for (let i = 0; i < sampleOffsets.length; i++) {
+        const sz = stsz[i] || 0;
+        if (sz < 2) continue;
+        const buf = await file.slice(sampleOffsets[i], sampleOffsets[i] + sz).arrayBuffer();
+        const dv = new DataView(buf);
+        const len = dv.getUint16(0);
+        const textBytes = new Uint8Array(buf, 2, Math.min(len, sz - 2));
+        const title = decoder.decode(textBytes);
+        chapters.push({ time: sampleTimes[i] || 0, title: title.trim() || ('Chapter ' + (i + 1)) });
+    }
+    return chapters.length ? chapters : null;
+}
+
 async function readMp4Chapters(file) {
     try {
-        let pos = 0;
-        const fileSize = file.size;
-        // Walk top-level atoms until we find moov (first 16MB only — moov is usually near the start for audiobooks)
-        const limit = Math.min(fileSize, 16 * 1024 * 1024);
-        while (pos + 8 < limit) {
-            const hdr = new DataView(await file.slice(pos, pos + 16).arrayBuffer());
-            let size = hdr.getUint32(0);
-            const type = readBoxType(hdr, 4);
-            let dataStart = pos + 8;
-            if (size === 1) {
-                size = Number(hdr.getBigUint64(8));
-                dataStart = pos + 16;
-            } else if (size === 0) {
-                size = fileSize - pos;
-            }
-            if (size <= 0) return null;
-            if (type === 'moov') {
-                const moov = new DataView(await file.slice(dataStart, pos + size).arrayBuffer());
-                const udta = findBox(moov, 'udta');
-                if (udta) {
-                    const chpl = findBox(udta, 'chpl');
-                    if (chpl) return parseChplBox(chpl);
-                }
-                return null;
-            }
-            pos += size;
+        const moov = await findMoovDataView(file);
+        if (!moov) return null;
+        // 1. Try Nero chpl (most reliable when present)
+        const chpl = findPath(moov, 'udta', 'chpl');
+        if (chpl) {
+            const c = parseChplBox(chpl);
+            if (c && c.length > 1) return c;
         }
+        // 2. Try QuickTime chapter reference track (most modern m4b)
+        const qt = await parseQtChapters(file, moov);
+        if (qt && qt.length > 1) return qt;
     } catch (e) {
         console.warn('chapter parse failed', e);
     }
@@ -1581,6 +1938,7 @@ async function importFiles(fileList) {
 
     toast(`Importing ${files.length} file${files.length > 1 ? 's' : ''}...`);
     let added = 0;
+    let unsupported = 0;
 
     for (const file of files) {
         try {
@@ -1594,6 +1952,9 @@ async function importFiles(fileList) {
             const isAudiobook = (tags.genre || '').toLowerCase().includes('audiobook')
                 || (file.name || '').toLowerCase().endsWith('.m4b')
                 || (chapters && chapters.length > 1);
+            const canPlay = canBrowserPlay(file);
+            if (!canPlay) unsupported++;
+            const ext = ((file.name || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '';
 
             const track = {
                 id: uid(),
@@ -1604,11 +1965,14 @@ async function importFiles(fileList) {
                 trackNum: parseInt(tags.track) || 0,
                 duration: duration,
                 mimeType: inferMimeType(file),
+                ext: ext.toLowerCase(),
+                playable: canPlay !== '',
                 addedAt: Date.now(),
                 kind: isAudiobook ? 'audiobook' : 'music',
                 file: file,
                 artwork: artworkBlob,
                 chapters: chapters || null,
+                bookmarks: [],
             };
 
             await dbPut('tracks', track);
@@ -1623,7 +1987,11 @@ async function importFiles(fileList) {
     saveAudiobookFlags();
     refreshSidebarCounts();
     render();
-    toast(`Added ${added} track${added !== 1 ? 's' : ''}`);
+    if (unsupported) {
+        toast(`Added ${added} • ${unsupported} format${unsupported !== 1 ? 's' : ''} this browser cannot decode (open ⓘ on track for details)`);
+    } else {
+        toast(`Added ${added} track${added !== 1 ? 's' : ''}`);
+    }
 }
 
 function albumKey(track) {
@@ -1648,12 +2016,23 @@ async function loadAll() {
     backfillChapters().catch(() => {});
     audio.volume = state.settings.volume;
     audio.playbackRate = state.settings.speed;
+    audio.preservesPitch = true;
+    audio.mozPreservesPitch = true;
+    audio.webkitPreservesPitch = true;
+    if (state.settings.eq) {
+        eq.on = !!state.settings.eq.on;
+        Object.assign(eq.bands, state.settings.eq.bands || {});
+        if (eq.on) { ensureEqGraph(); applyEqValues(); }
+    }
     updateVolUI();
     updateSpeedUI();
     updateShuffleRepeatUI();
+    updateEqUI();
+    updateAbUI();
 }
 
 async function saveSettings() {
+    state.settings.eq = { on: eq.on, bands: { ...eq.bands } };
     await dbPut('meta', { key: 'settings', value: state.settings });
 }
 
@@ -1844,10 +2223,14 @@ function renderTrackList(tracks) {
 
 function renderTrackRow(t, i) {
     const isPlaying = state.currentTrack && state.currentTrack.id === t.id;
+    const ext = t.ext || (((t.file && t.file.name) || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+    const unsupported = t.playable === false;
+    const bmCount = (t.bookmarks || []).length;
+    const badges = `${ext ? `<span class="fmt-badge">${escapeHtml(ext.toUpperCase())}</span>` : ''}${unsupported ? '<span class="fmt-badge warn" title="Browser cannot decode this file">⚠</span>' : ''}${bmCount ? `<span class="fmt-badge bm">★${bmCount}</span>` : ''}`;
     return `
-        <div class="track-row ${isPlaying ? 'playing' : ''}" data-id="${t.id}" data-idx="${i}" oncontextmenu="showTrackMenu(event, '${t.id}'); return false;">
+        <div class="track-row ${isPlaying ? 'playing' : ''} ${unsupported ? 'unsupported' : ''}" data-id="${t.id}" data-idx="${i}" oncontextmenu="showTrackMenu(event, '${t.id}'); return false;">
             <div class="track-num"><span>${i + 1}</span></div>
-            <div class="track-title">${escapeHtml(t.title)}<div style="font-size:12px;color:var(--text-dim);font-weight:400;margin-top:2px">${escapeHtml(t.artist)}</div></div>
+            <div class="track-title">${escapeHtml(t.title)}<div style="font-size:12px;color:var(--text-dim);font-weight:400;margin-top:2px">${escapeHtml(t.artist)} ${badges}</div></div>
             <div class="track-meta">${escapeHtml(t.album)}</div>
             <div class="track-time">${fmtTime(t.duration)}</div>
             <button class="track-menu" onclick="event.stopPropagation(); showTrackMenu(event, '${t.id}')">⋯</button>
@@ -2063,19 +2446,14 @@ async function playCurrent() {
 
 function togglePlay() {
     if (!state.currentTrack) {
-        if (state.tracks.length) {
-            playList(state.tracks.map(t => t.id), 0);
-        }
+        if (state.tracks.length) playList(state.tracks.map(t => t.id), 0);
         return;
     }
-    if (audio.paused) {
-        audio.play();
-        state.isPlaying = true;
-    } else {
-        audio.pause();
-        state.isPlaying = false;
-    }
-    updatePlayUI();
+    // Don't set isPlaying optimistically — the audio element's 'play'/'pause' events
+    // are the source of truth. Setting state up-front used to leave the icon stuck
+    // showing pause when play() rejected (e.g. an unsupported codec).
+    if (audio.paused) audio.play().catch(e => console.warn('play() rejected', e));
+    else audio.pause();
 }
 
 // When the current track has embedded chapters, the prev/next buttons jump
@@ -2154,10 +2532,14 @@ async function playChapter(trackId, chapterIdx) {
 }
 
 function updatePlayUI() {
-    $('play-icon').hidden = state.isPlaying;
-    $('pause-icon').hidden = !state.isPlaying;
-    $('np-play-icon').hidden = state.isPlaying;
-    $('np-pause-icon').hidden = !state.isPlaying;
+    // Derive directly from the audio element. state.isPlaying is kept in sync
+    // by the play/pause listeners but the DOM is the source of truth.
+    const playing = !!state.currentTrack && !audio.paused && !audio.ended;
+    $('play-icon').hidden = playing;
+    $('pause-icon').hidden = !playing;
+    $('np-play-icon').hidden = playing;
+    $('np-pause-icon').hidden = !playing;
+    $('play-btn').classList.toggle('loading', !!state.currentTrack && audio.readyState < 3 && !audio.paused);
 }
 
 function updateTrackInfo() {
@@ -2170,6 +2552,24 @@ function updateTrackInfo() {
     const html = artHTML(t);
     $('player-art').innerHTML = html;
     $('np-art').innerHTML = html;
+    updateNpChapters(t);
+}
+
+function updateNpChapters(t) {
+    const wrap = $('np-chapters');
+    if (!wrap) return;
+    const chs = (Array.isArray(t.chapters) && t.chapters.length > 1) ? t.chapters : null;
+    if (!chs) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+    wrap.hidden = false;
+    wrap.innerHTML = `
+        <div class="np-chapters-title">Chapters · ${chs.length}</div>
+        <div class="np-chapters-list">
+            ${chs.map((ch, i) => `<button class="np-chapter" data-chapter-idx="${i}" onclick="playChapter(${jsArg(t.id)}, ${i})">
+                <span class="np-chapter-num">${i + 1}</span>
+                <span class="np-chapter-title">${escapeHtml(ch.title || ('Chapter ' + (i + 1)))}</span>
+                <span class="np-chapter-time">${fmtTime(ch.time)}</span>
+            </button>`).join('')}
+        </div>`;
 }
 
 function updateMediaSession(track) {
@@ -2207,6 +2607,8 @@ function flashSeek(delta) {
 // Keep play/pause icons in sync with the audio element, no matter who triggers it
 audio.addEventListener('play', () => { state.isPlaying = true; updatePlayUI(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
 audio.addEventListener('pause', () => { state.isPlaying = false; updatePlayUI(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
+audio.addEventListener('waiting', () => updatePlayUI());
+audio.addEventListener('canplay', () => updatePlayUI());
 audio.addEventListener('loadedmetadata', () => {
     const dur = audio.duration || 0;
     $('time-total').textContent = fmtTime(dur);
@@ -2215,14 +2617,17 @@ audio.addEventListener('loadedmetadata', () => {
 audio.addEventListener('error', () => {
     const err = audio.error;
     if (!err) return;
+    const t = state.currentTrack;
+    const ext = t && t.file ? (((t.file.name || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase() : '';
+    const fmtLabel = ext ? ext.toUpperCase() : 'this file';
     const reasons = {
         1: 'Playback aborted',
-        2: 'Network error',
-        3: 'Cannot decode this file',
-        4: 'This audio format is not supported by your browser',
+        2: 'Network error reading the file',
+        3: `Cannot decode ${fmtLabel}. The file may be corrupted or use a codec your browser does not understand.`,
+        4: `Your browser cannot play ${fmtLabel} files. Try Chrome on desktop, or convert to MP3/M4A first.`,
     };
     toast(reasons[err.code] || 'Playback error');
-    console.error('audio error', err);
+    console.error('audio error', err.code, err.message);
 });
 
 audio.addEventListener('timeupdate', () => {
@@ -2235,6 +2640,19 @@ audio.addEventListener('timeupdate', () => {
     $('time-total').textContent = fmtTime(dur);
     $('np-time-current').textContent = fmtTime(cur);
     $('np-time-total').textContent = fmtTime(dur);
+
+    // A-B loop enforcement
+    if (ab.a != null && ab.b != null && cur >= ab.b - 0.05) {
+        audio.currentTime = ab.a;
+    }
+
+    // Highlight current chapter in chapter list, if visible
+    if (currentChapters() && state._lastChapterIdx !== currentChapterIdx()) {
+        state._lastChapterIdx = currentChapterIdx();
+        document.querySelectorAll('[data-chapter-idx]').forEach(el => {
+            el.classList.toggle('playing', parseInt(el.dataset.chapterIdx) === state._lastChapterIdx);
+        });
+    }
 
     // Save audiobook position every ~3s
     const t = state.currentTrack;
@@ -2295,13 +2713,183 @@ function bindVol() {
 
 function updateVolUI() { $('vol-fill').style.width = (state.settings.volume * 100) + '%'; }
 
-const SPEEDS = [1, 1.25, 1.5, 1.75, 2, 0.75];
-function cycleSpeed() {
-    const i = SPEEDS.indexOf(state.settings.speed);
-    state.settings.speed = SPEEDS[(i + 1) % SPEEDS.length];
-    audio.playbackRate = state.settings.speed;
+// ============================================================
+// EQUALIZER (Web Audio API, 3-band BiquadFilter chain)
+// Lazy-init: don't create AudioContext until the user actually opens EQ.
+// ============================================================
+const eq = {
+    ctx: null,
+    src: null,
+    bass: null,
+    mid: null,
+    treble: null,
+    gain: null,
+    on: false,
+    bands: { bass: 0, mid: 0, treble: 0, preamp: 0 },
+};
+const EQ_PRESETS = {
+    'Flat': { bass: 0, mid: 0, treble: 0, preamp: 0 },
+    'Bass boost': { bass: 8, mid: 0, treble: 2, preamp: -2 },
+    'Treble boost': { bass: 0, mid: 0, treble: 8, preamp: -2 },
+    'Voice / Audiobook': { bass: -3, mid: 5, treble: 4, preamp: 0 },
+    'Loud (compressed)': { bass: 5, mid: 1, treble: 6, preamp: -3 },
+    'Warm': { bass: 4, mid: -1, treble: -2, preamp: 0 },
+    'Bright': { bass: -2, mid: 1, treble: 5, preamp: -1 },
+};
+function ensureEqGraph() {
+    if (eq.ctx) return;
+    try {
+        eq.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        eq.src = eq.ctx.createMediaElementSource(audio);
+        eq.bass = eq.ctx.createBiquadFilter(); eq.bass.type = 'lowshelf'; eq.bass.frequency.value = 200;
+        eq.mid = eq.ctx.createBiquadFilter(); eq.mid.type = 'peaking'; eq.mid.frequency.value = 1000; eq.mid.Q.value = 1;
+        eq.treble = eq.ctx.createBiquadFilter(); eq.treble.type = 'highshelf'; eq.treble.frequency.value = 4000;
+        eq.gain = eq.ctx.createGain(); eq.gain.gain.value = 1;
+        eq.src.connect(eq.bass).connect(eq.mid).connect(eq.treble).connect(eq.gain).connect(eq.ctx.destination);
+        applyEqValues();
+    } catch (e) { console.warn('EQ init failed', e); eq.ctx = null; }
+}
+function applyEqValues() {
+    if (!eq.ctx) return;
+    const b = eq.on ? eq.bands : { bass: 0, mid: 0, treble: 0, preamp: 0 };
+    eq.bass.gain.value = b.bass;
+    eq.mid.gain.value = b.mid;
+    eq.treble.gain.value = b.treble;
+    // preamp dB → linear
+    eq.gain.gain.value = Math.pow(10, (b.preamp || 0) / 20);
+}
+function setEqOn(v) { eq.on = !!v; if (v) ensureEqGraph(); applyEqValues(); saveSettings(); updateEqUI(); }
+function setEqBand(name, val) { eq.bands[name] = val; applyEqValues(); saveSettings(); }
+function applyEqPreset(name) {
+    const p = EQ_PRESETS[name]; if (!p) return;
+    Object.assign(eq.bands, p);
+    if (!eq.on) eq.on = true;
+    ensureEqGraph(); applyEqValues(); saveSettings(); updateEqUI();
+}
+function showEqModal() {
+    const presetBtns = Object.keys(EQ_PRESETS).map(n => `<button class="ctx-item" data-preset="${n}">${n}</button>`).join('');
+    showModal(`
+        <div class="modal-title">Equalizer</div>
+        <label class="eq-toggle"><input type="checkbox" id="eq-on" ${eq.on ? 'checked' : ''}> Enable EQ</label>
+        <div class="eq-row"><span>Bass</span><input type="range" id="eq-bass" min="-15" max="15" step="0.5" value="${eq.bands.bass}"><span class="eq-val" id="eq-bass-v">${eq.bands.bass}dB</span></div>
+        <div class="eq-row"><span>Mid</span><input type="range" id="eq-mid" min="-15" max="15" step="0.5" value="${eq.bands.mid}"><span class="eq-val" id="eq-mid-v">${eq.bands.mid}dB</span></div>
+        <div class="eq-row"><span>Treble</span><input type="range" id="eq-treble" min="-15" max="15" step="0.5" value="${eq.bands.treble}"><span class="eq-val" id="eq-treble-v">${eq.bands.treble}dB</span></div>
+        <div class="eq-row"><span>Preamp</span><input type="range" id="eq-pre" min="-12" max="6" step="0.5" value="${eq.bands.preamp}"><span class="eq-val" id="eq-pre-v">${eq.bands.preamp}dB</span></div>
+        <div class="eq-presets">${presetBtns}</div>
+        <div class="modal-actions"><button class="btn-text" onclick="hideModal()">Done</button></div>
+    `);
+    $('eq-on').addEventListener('change', e => setEqOn(e.target.checked));
+    const bind = (id, name, lblId) => {
+        $(id).addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            $(lblId).textContent = v + 'dB';
+            setEqBand(name, v);
+            if (!eq.on) { eq.on = true; $('eq-on').checked = true; ensureEqGraph(); applyEqValues(); }
+        });
+    };
+    bind('eq-bass', 'bass', 'eq-bass-v');
+    bind('eq-mid', 'mid', 'eq-mid-v');
+    bind('eq-treble', 'treble', 'eq-treble-v');
+    bind('eq-pre', 'preamp', 'eq-pre-v');
+    document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { applyEqPreset(b.dataset.preset); hideModal(); }));
+}
+function updateEqUI() { $('np-eq').classList.toggle('active', eq.on); }
+
+// ============================================================
+// A-B LOOP
+// ============================================================
+const ab = { a: null, b: null };
+function abPress() {
+    if (ab.a == null) { ab.a = audio.currentTime || 0; toast('A set — press again for B'); updateAbUI(); return; }
+    if (ab.b == null) {
+        const cur = audio.currentTime || 0;
+        if (cur <= ab.a + 1) { toast('B must be after A'); return; }
+        ab.b = cur; toast(`Looping ${fmtTime(ab.a)} → ${fmtTime(ab.b)}`); updateAbUI(); return;
+    }
+    abClear();
+}
+function abClear() { ab.a = null; ab.b = null; toast('Loop cleared'); updateAbUI(); }
+function updateAbUI() {
+    const btn = $('np-ab');
+    if (!btn) return;
+    btn.classList.toggle('active', ab.a != null);
+    btn.textContent = ab.b != null ? 'A↔B' : (ab.a != null ? 'A·' : 'A-B');
+}
+
+// ============================================================
+// BOOKMARKS
+// ============================================================
+async function addBookmark() {
+    const t = state.currentTrack;
+    if (!t) { toast('Nothing playing'); return; }
+    const time = Math.floor(audio.currentTime || 0);
+    const label = (currentChapters() ? (currentChapters()[currentChapterIdx()]?.title) : null) || `At ${fmtTime(time)}`;
+    t.bookmarks = t.bookmarks || [];
+    t.bookmarks.push({ time, label, ts: Date.now() });
+    await dbPut('tracks', t);
+    toast('Bookmark added');
+    if (state.currentView.kind === 'audiobook' || state.currentView.kind === 'album') render();
+}
+async function deleteBookmark(trackId, idx) {
+    const t = state.tracks.find(x => x.id === trackId);
+    if (!t || !t.bookmarks) return;
+    t.bookmarks.splice(idx, 1);
+    await dbPut('tracks', t);
+    showBookmarksModal(trackId);
+}
+function showBookmarksModal(trackId) {
+    const t = state.tracks.find(x => x.id === trackId) || state.currentTrack;
+    if (!t) { toast('No track'); return; }
+    const bm = t.bookmarks || [];
+    const list = bm.length
+        ? bm.map((b, i) => `
+            <div class="bm-row">
+                <button class="bm-jump" data-time="${b.time}">${fmtTime(b.time)} · ${escapeHtml(b.label)}</button>
+                <button class="bm-del" data-i="${i}" title="Delete">✕</button>
+            </div>`).join('')
+        : '<div style="color:var(--text-dim);padding:8px 0;font-size:14px">No bookmarks yet. While playing, tap the ★ button or press B to drop one.</div>';
+    showModal(`
+        <div class="modal-title">Bookmarks — ${escapeHtml(t.title)}</div>
+        <div class="bm-list">${list}</div>
+        <div class="modal-actions"><button class="btn-text" onclick="hideModal()">Close</button></div>
+    `);
+    document.querySelectorAll('.bm-jump').forEach(el => el.addEventListener('click', async () => {
+        const time = parseFloat(el.dataset.time);
+        if (state.currentTrack && state.currentTrack.id === t.id) {
+            audio.currentTime = time;
+        } else {
+            await playList([t.id], 0);
+            const seek = () => { audio.currentTime = time; audio.removeEventListener('loadedmetadata', seek); };
+            audio.addEventListener('loadedmetadata', seek);
+        }
+        hideModal();
+    }));
+    document.querySelectorAll('.bm-del').forEach(el => el.addEventListener('click', () => deleteBookmark(t.id, parseInt(el.dataset.i))));
+}
+
+const SPEEDS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.25, 1.5, 1.75, 2, 2.5, 3];
+function applySpeed(v) {
+    state.settings.speed = v;
+    audio.playbackRate = v;
+    audio.preservesPitch = true;
+    audio.mozPreservesPitch = true;
+    audio.webkitPreservesPitch = true;
     updateSpeedUI();
     saveSettings();
+}
+function cycleSpeed() { showSpeedPicker(); }
+function showSpeedPicker() {
+    const cur = state.settings.speed;
+    showModal(`
+        <div class="modal-title">Playback speed</div>
+        <div class="speed-grid">
+            ${SPEEDS.map(s => `<button class="speed-pick ${s === cur ? 'active' : ''}" data-s="${s}">${s}×</button>`).join('')}
+        </div>
+        <div class="modal-actions"><button class="btn-text" onclick="hideModal()">Close</button></div>
+    `);
+    document.querySelectorAll('.speed-pick').forEach(b => {
+        b.addEventListener('click', () => { applySpeed(parseFloat(b.dataset.s)); hideModal(); });
+    });
 }
 function updateSpeedUI() {
     const label = state.settings.speed + '×';
@@ -2485,6 +3073,7 @@ function showTrackMenu(e, trackId) {
         { label: 'Play next', action: () => playNext(trackId) },
         { label: 'Add to queue', action: () => addToQueue(trackId) },
         { divider: true },
+        { label: 'Bookmarks…', action: () => showBookmarksModal(trackId) },
         { label: 'Add to playlist...', action: () => addToPlaylistPrompt(trackId) },
         { divider: true },
         { label: 'Remove from library', action: () => deleteTrack(trackId), danger: true },
@@ -2605,6 +3194,7 @@ function showSleepMenu(e) {
             { label: '30 minutes', mins: 30 },
             { label: '45 minutes', mins: 45 },
             { label: '1 hour', mins: 60 },
+            { label: 'End of chapter', mins: -2 },
             { label: 'End of track', mins: -1 },
         ];
     menu.innerHTML = opts.map((o, i) => `<div class="ctx-item" data-i="${i}">${o.label}</div>`).join('');
@@ -2638,10 +3228,24 @@ function setSleep(mins) {
     }
     if (mins === 0) { toast('Sleep timer cancelled'); $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active'); return; }
     if (mins === -1) {
-        const onEnd = () => { audio.pause(); state.isPlaying = false; updatePlayUI(); audio.removeEventListener('ended', onEnd); $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active'); toast('Stopped (end of track)'); };
+        const onEnd = () => { audio.pause(); updatePlayUI(); audio.removeEventListener('ended', onEnd); $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active'); toast('Stopped (end of track)'); };
         audio.addEventListener('ended', onEnd);
         state.sleepTimer = { cancel: () => audio.removeEventListener('ended', onEnd) };
         toast('Will stop at end of track');
+    } else if (mins === -2) {
+        const chs = currentChapters();
+        if (!chs) { toast('No chapters on this track — using End of track'); setSleep(-1); return; }
+        const i = currentChapterIdx();
+        const endTime = (i < chs.length - 1) ? chs[i + 1].time : (audio.duration || Infinity);
+        const checker = setInterval(() => {
+            if ((audio.currentTime || 0) >= endTime - 0.05) {
+                audio.pause(); updatePlayUI(); clearInterval(checker);
+                $('sleep-btn').classList.remove('active'); $('np-sleep').classList.remove('active');
+                toast('Stopped (end of chapter)');
+            }
+        }, 500);
+        state.sleepTimer = { cancel: () => clearInterval(checker) };
+        toast('Will stop at end of chapter');
     } else {
         state.sleepTimer = setTimeout(() => {
             audio.pause();
@@ -2733,6 +3337,9 @@ $('speed-btn').addEventListener('click', cycleSpeed);
 $('np-speed').addEventListener('click', cycleSpeed);
 $('sleep-btn').addEventListener('click', showSleepMenu);
 $('np-sleep').addEventListener('click', showSleepMenu);
+$('np-eq').addEventListener('click', showEqModal);
+$('np-ab').addEventListener('click', abPress);
+$('np-bookmark').addEventListener('click', addBookmark);
 $('new-playlist-btn').addEventListener('click', newPlaylistPrompt);
 
 // Double-tap on Now Playing artwork: left half = -15s, right half = +15s
@@ -2785,6 +3392,8 @@ document.addEventListener('keydown', (e) => {
     else if (e.key === 'ArrowUp') { e.preventDefault(); state.settings.volume = Math.min(1, state.settings.volume + 0.05); audio.volume = state.settings.volume; updateVolUI(); saveSettings(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); state.settings.volume = Math.max(0, state.settings.volume - 0.05); audio.volume = state.settings.volume; updateVolUI(); saveSettings(); }
     else if (e.key === 'm' || e.key === 'M') { audio.muted = !audio.muted; toast(audio.muted ? 'Muted' : 'Unmuted'); }
+    else if (e.key === 'b' || e.key === 'B') { addBookmark(); }
+    else if (e.key === 'l' || e.key === 'L') { abPress(); }
     else if (e.key === 'Escape') { hideModal(); $('now-playing-full').classList.remove('active'); }
 });
 
@@ -2805,6 +3414,11 @@ window.hideModal = hideModal;
 window.newPlaylistPrompt = newPlaylistPrompt;
 window.showTrackMenu = showTrackMenu;
 window.playChapter = playChapter;
+window.showBookmarksModal = showBookmarksModal;
+window.deleteBookmark = deleteBookmark;
+window.applyEqPreset = applyEqPreset;
+window.setEqOn = setEqOn;
+window.setEqBand = setEqBand;
 
 // ============================================================
 // INIT
