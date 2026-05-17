@@ -63,35 +63,35 @@
             --player-h: 92px;
         }
 
-        /* ===== DARK THEME ===== */
+        /* ===== DARK THEME ===== sky-blue + yellow, pulled from the app icons */
         :root[data-theme="dark"] {
-            --bg: #0F1A2C;
-            --bg-deep: #182740;
-            --surface: #1A2840;
-            --surface-2: #243352;
-            --card: #1F2D49;
-            --card-hover: #2A3A5A;
+            --bg: #103464;            /* deep icon-blue (darker than mid-gradient for night comfort) */
+            --bg-deep: #1A4380;        /* sidebar/player */
+            --surface: #1A4380;        /* cards */
+            --surface-2: #245599;      /* hover surface, brighter */
+            --card: #1F4A8C;
+            --card-hover: #2A5BA8;
 
-            --text: #ECE6DC;
-            --text-dim: #97A3B8;
-            --text-faint: #5C6B85;
-            --ink-deep: #0E1623;
+            --text: #FFF6E0;           /* warm off-white, slight yellow tint */
+            --text-dim: #B5C8E0;
+            --text-faint: #708FB2;
+            --ink-deep: #0A2042;       /* text on yellow accent — deep blue */
 
-            --accent: #F2BB44;
-            --accent-bright: #FFD05F;
-            --accent-dim: #C68C20;
-            --accent-glow: rgba(242, 187, 68, 0.20);
+            --accent: #FFCC44;         /* icon yellow */
+            --accent-bright: #FFDD66;
+            --accent-dim: #E5A82A;
+            --accent-glow: rgba(255, 204, 68, 0.22);
 
-            --accent-blue: #4A95D4;
+            --accent-blue: #4FA3E0;    /* secondary accent for outline gradients */
             --accent-blue-deep: #2D7AB8;
 
-            --border: rgba(242, 187, 68, 0.20);
-            --border-strong: rgba(242, 187, 68, 0.40);
-            --line: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 204, 68, 0.22);
+            --border-strong: rgba(255, 204, 68, 0.42);
+            --line: rgba(255, 255, 255, 0.10);
 
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.40);
-            --shadow:    0 8px 22px rgba(0, 0, 0, 0.45);
-            --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.30);
+            --shadow:    0 8px 22px rgba(0, 0, 0, 0.40);
+            --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.50);
         }
 
         html, body {
@@ -265,7 +265,7 @@
             gap: 16px;
             border-bottom: 1px solid var(--border);
         }
-        :root[data-theme="dark"] .topbar { background: rgba(24, 39, 64, 0.82); }
+        :root[data-theme="dark"] .topbar { background: rgba(26, 67, 128, 0.82); }
 
         .menu-btn {
             display: none;
@@ -651,7 +651,7 @@
             z-index: 1000;
             pointer-events: none;
         }
-        :root[data-theme="dark"] .drop-overlay { background: rgba(15, 26, 44, 0.92); }
+        :root[data-theme="dark"] .drop-overlay { background: rgba(16, 52, 100, 0.92); }
         .drop-overlay.active { display: flex; }
         .drop-card {
             border: 2.5px dashed var(--accent);
@@ -1208,8 +1208,8 @@
         }
         :root[data-theme="dark"] .main {
             background-image:
-                linear-gradient(180deg, rgba(36, 51, 82, 0.85) 0%, var(--bg) 320px),
-                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 0l14 14-14 14L0 14z' fill='none' stroke='%23F2BB44' stroke-opacity='0.10' stroke-width='0.7'/></svg>");
+                linear-gradient(180deg, rgba(36, 85, 153, 0.88) 0%, var(--bg) 320px),
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 0l14 14-14 14L0 14z' fill='none' stroke='%23FFCC44' stroke-opacity='0.12' stroke-width='0.7'/></svg>");
         }
 
         /* Home view */
@@ -1311,7 +1311,7 @@
             pointer-events: none;
             font-variant-numeric: tabular-nums;
         }
-        :root[data-theme="dark"] .build-pill { background: rgba(24, 39, 64, 0.85); }
+        :root[data-theme="dark"] .build-pill { background: rgba(26, 67, 128, 0.85); }
 
         /* Theme toggle button — sits in the topbar */
         .theme-toggle {
@@ -1747,7 +1747,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v12';
+const BUILD = 'v13';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -1758,7 +1758,7 @@ document.getElementById('build-pill').textContent = BUILD;
     const theme = saved === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0F1A2C' : '#F7F4EE');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#103464' : '#F7F4EE');
 })();
 document.getElementById('theme-toggle').addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -1766,7 +1766,7 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('hifi_theme', next);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', next === 'dark' ? '#0F1A2C' : '#F7F4EE');
+    if (meta) meta.setAttribute('content', next === 'dark' ? '#103464' : '#F7F4EE');
 });
 
 // Poll sw.js to detect new deploys; show banner when it changes.
