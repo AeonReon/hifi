@@ -63,6 +63,37 @@
             --player-h: 92px;
         }
 
+        /* ===== DARK THEME ===== */
+        :root[data-theme="dark"] {
+            --bg: #0F1A2C;
+            --bg-deep: #182740;
+            --surface: #1A2840;
+            --surface-2: #243352;
+            --card: #1F2D49;
+            --card-hover: #2A3A5A;
+
+            --text: #ECE6DC;
+            --text-dim: #97A3B8;
+            --text-faint: #5C6B85;
+            --ink-deep: #0E1623;
+
+            --accent: #F2BB44;
+            --accent-bright: #FFD05F;
+            --accent-dim: #C68C20;
+            --accent-glow: rgba(242, 187, 68, 0.20);
+
+            --accent-blue: #4A95D4;
+            --accent-blue-deep: #2D7AB8;
+
+            --border: rgba(242, 187, 68, 0.20);
+            --border-strong: rgba(242, 187, 68, 0.40);
+            --line: rgba(255, 255, 255, 0.08);
+
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.40);
+            --shadow:    0 8px 22px rgba(0, 0, 0, 0.45);
+            --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+        }
+
         html, body {
             height: 100%;
             overflow: hidden;
@@ -234,6 +265,7 @@
             gap: 16px;
             border-bottom: 1px solid var(--border);
         }
+        :root[data-theme="dark"] .topbar { background: rgba(24, 39, 64, 0.82); }
 
         .menu-btn {
             display: none;
@@ -619,6 +651,7 @@
             z-index: 1000;
             pointer-events: none;
         }
+        :root[data-theme="dark"] .drop-overlay { background: rgba(15, 26, 44, 0.92); }
         .drop-overlay.active { display: flex; }
         .drop-card {
             border: 2.5px dashed var(--accent);
@@ -1173,6 +1206,11 @@
             background-repeat: no-repeat, repeat;
             background-color: var(--bg);
         }
+        :root[data-theme="dark"] .main {
+            background-image:
+                linear-gradient(180deg, rgba(36, 51, 82, 0.85) 0%, var(--bg) 320px),
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 0l14 14-14 14L0 14z' fill='none' stroke='%23F2BB44' stroke-opacity='0.10' stroke-width='0.7'/></svg>");
+        }
 
         /* Home view */
         .home-hero {
@@ -1273,6 +1311,29 @@
             pointer-events: none;
             font-variant-numeric: tabular-nums;
         }
+        :root[data-theme="dark"] .build-pill { background: rgba(24, 39, 64, 0.85); }
+
+        /* Theme toggle button — sits in the topbar */
+        .theme-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .theme-toggle:active { transform: scale(0.94); }
+        .theme-toggle .icon-sun { display: none; }
+        .theme-toggle .icon-moon { display: block; }
+        :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+        :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
         /* "New version available — tap to reload" banner */
         .update-banner {
@@ -1523,6 +1584,10 @@
                 <input type="search" id="search-input" placeholder="Search your library">
             </div>
             <div class="topbar-actions">
+                <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+                    <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                </button>
                 <button class="btn-primary" id="add-btn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     <span class="btn-label">Add Music</span>
@@ -1682,8 +1747,27 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v11';
+const BUILD = 'v12';
 document.getElementById('build-pill').textContent = BUILD;
+
+// ============================================================
+// THEME (light / dark) — light is default, choice persists.
+// ============================================================
+(function initTheme() {
+    const saved = localStorage.getItem('hifi_theme'); // 'dark' | 'light' | null
+    const theme = saved === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0F1A2C' : '#F7F4EE');
+})();
+document.getElementById('theme-toggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('hifi_theme', next);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', next === 'dark' ? '#0F1A2C' : '#F7F4EE');
+});
 
 // Poll sw.js to detect new deploys; show banner when it changes.
 async function checkForNewBuild(initial) {
@@ -2140,29 +2224,113 @@ function hueFromString(s) {
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     return h % 360;
 }
+// Curated 12-pair gradient palette — hashed by seed so each unique title
+// gets its own colour, instead of every "Unknown Album" looking identical.
+const PLACEHOLDER_GRADIENTS = [
+    ['#D9A02D', '#A8771A'], // gold
+    ['#2D7AB8', '#1F5A8E'], // blue
+    ['#2A9D8F', '#1E7268'], // teal
+    ['#7C5CBF', '#5A4290'], // purple
+    ['#E07A5F', '#B85A3F'], // coral
+    ['#4C8C5D', '#356342'], // forest
+    ['#C75C7F', '#9A4262'], // rose
+    ['#D87E2A', '#A85E15'], // amber
+    ['#5A6B8E', '#3D4A66'], // slate
+    ['#9B4C8C', '#6E325E'], // plum
+    ['#8B8A4A', '#65642F'], // olive
+    ['#A04545', '#6E2828'], // maroon
+];
+
+function hashString(s) {
+    let h = 0;
+    s = String(s || '?');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h;
+}
+
+function isUnknownAlbum(name) {
+    if (!name) return true;
+    const n = String(name).toLowerCase().trim();
+    return n === '' || n === 'unknown album' || n === 'unknown';
+}
+
+// First few meaningful words of a title, capped at ~28 chars / 5 words.
+function deriveTitleName(title) {
+    const cleaned = String(title || '').trim();
+    if (!cleaned) return 'Untitled';
+    const words = cleaned.split(/\s+/);
+    let out = '';
+    for (const w of words) {
+        if (out && (out.length + 1 + w.length) > 28) break;
+        out = out ? out + ' ' + w : w;
+        if (out.split(/\s+/).length >= 5) break;
+    }
+    return out;
+}
+
+// Display name for an album — falls back to first track's derived title when unknown.
+function displayAlbumName(album) {
+    if (!album) return 'Unknown';
+    if (!isUnknownAlbum(album.name)) return album.name;
+    const t = album.tracks && album.tracks[0];
+    return t ? deriveTitleName(t.title) : 'Unknown';
+}
+
+// Display value for a track's album (used in track-row meta + np subtitle).
+function displayTrackAlbum(track) {
+    if (!track) return '';
+    if (!isUnknownAlbum(track.album)) return track.album;
+    return deriveTitleName(track.title);
+}
+
+// Hash seed for placeholder art — unique per "thing" so each card gets a different colour.
+function placeholderSeed(album) {
+    if (!album) return '?';
+    if (!isUnknownAlbum(album.name)) return album.name;
+    const t = album.tracks && album.tracks[0];
+    return (t && (t.title || t.id)) || album.key || 'Unknown';
+}
+
+// 1-3 char initials. "101 Power Thoughts" → "101"; "Power Thoughts" → "PT"; "Power" → "P".
+function initialsFor(text) {
+    const t = String(text || '').trim();
+    if (!t) return '?';
+    const words = t.split(/\s+/).filter(Boolean);
+    const numMatch = words[0] && words[0].match(/^\d+/);
+    if (numMatch) return numMatch[0].slice(0, 3);
+    const letters = words.slice(0, 2).map(w => w[0].toUpperCase()).join('');
+    return letters || t[0].toUpperCase();
+}
+
 function placeholderArt(text) {
-    const t = String(text || '').trim() || '?';
-    const letters = t.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || t[0].toUpperCase();
-    const hue = hueFromString(t);
-    const id = 'g_' + hue + '_' + Math.random().toString(36).slice(2, 7);
+    const seed = String(text || '').trim() || '?';
+    const letters = initialsFor(seed);
+    const h = hashString(seed);
+    const [c1, c2] = PLACEHOLDER_GRADIENTS[h % PLACEHOLDER_GRADIENTS.length];
+    const id = 'g_' + (h % 9973).toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+    const fontSize = letters.length >= 3 ? 64 : letters.length === 2 ? 78 : 92;
     return `<svg class="art-placeholder" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
         <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="hsl(${hue},42%,38%)"/>
-            <stop offset="100%" stop-color="hsl(${(hue + 35) % 360},48%,16%)"/>
+            <stop offset="0%" stop-color="${c1}"/>
+            <stop offset="100%" stop-color="${c2}"/>
         </linearGradient></defs>
         <rect width="200" height="200" fill="url(#${id})"/>
-        <text x="100" y="124" text-anchor="middle" font-family="-apple-system,SF Pro Display,system-ui,sans-serif" font-size="76" font-weight="700" fill="rgba(255,255,255,0.93)" letter-spacing="-2">${escapeHtml(letters)}</text>
+        <text x="100" y="${100 + fontSize * 0.34}" text-anchor="middle" font-family="-apple-system,SF Pro Display,system-ui,sans-serif" font-size="${fontSize}" font-weight="700" fill="rgba(255,255,255,0.95)" letter-spacing="-2">${escapeHtml(letters)}</text>
     </svg>`;
 }
+
 function artHTML(track) {
     const url = track && artworkURL(track);
     if (url) return `<img src="${url}" alt="">`;
-    return placeholderArt(track ? (track.album || track.title) : '?');
+    if (!track) return placeholderArt('?');
+    // Unknown-album tracks hash on their title so each gets a unique colour.
+    const seed = isUnknownAlbum(track.album) ? (track.title || track.id) : track.album;
+    return placeholderArt(seed);
 }
 function albumArtHTML(album) {
     const cover = album.tracks.find(t => t.artwork);
     if (cover) return `<img src="${artworkURL(cover)}" alt="">`;
-    return placeholderArt(album.name);
+    return placeholderArt(placeholderSeed(album));
 }
 
 // ============================================================
@@ -2231,11 +2399,14 @@ async function importFiles(fileList) {
 }
 
 function albumKey(track) {
+    // Unknown-album tracks each become their own pseudo-album so they get
+    // unique cards/colours in the Albums view instead of all piling into one tile.
+    if (isUnknownAlbum(track.album)) return '__solo__\x00' + track.id;
     return (track.albumArtist || track.artist) + ' ' + track.album;
 }
 
 async function saveAudiobookFlags() {
-    await dbPut('meta', { key: 'audiobookAlbums', value: Array.from(state.audiobookIds) });
+    await dbPut('meta', { key: 'audiobookAlbums', value: Array.from(state.audiobookIds), migratedSoloV1: true });
 }
 
 // ============================================================
@@ -2246,6 +2417,19 @@ async function loadAll() {
     state.playlists = await dbAll('playlists');
     const ab = await dbGet('meta', 'audiobookAlbums');
     state.audiobookIds = new Set(ab?.value || []);
+    // Migrate audiobook flags for unknown-album tracks: old key was
+    // "artist\x00Unknown Album"; new key is "__solo__\x00<trackId>".
+    if (!ab?.migratedSoloV1) {
+        const next = new Set();
+        for (const k of state.audiobookIds) next.add(k);
+        state.tracks.forEach(t => {
+            if (!isUnknownAlbum(t.album)) return;
+            const oldKey = (t.albumArtist || t.artist) + '\x00' + t.album;
+            if (state.audiobookIds.has(oldKey)) next.add(albumKey(t));
+        });
+        state.audiobookIds = next;
+        await dbPut('meta', { key: 'audiobookAlbums', value: Array.from(next), migratedSoloV1: true });
+    }
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
     // Backfill chapters for tracks imported before chapter parsing existed
@@ -2404,7 +2588,7 @@ function renderAlbumCard(album, kind) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
             </div>
-            <div class="album-name">${escapeHtml(album.name)}</div>
+            <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
             <div class="album-artist">${escapeHtml(album.artist)}</div>
         </div>`;
 }
@@ -2467,7 +2651,7 @@ function renderTrackRow(t, i) {
         <div class="track-row ${isPlaying ? 'playing' : ''} ${unsupported ? 'unsupported' : ''}" data-id="${t.id}" data-idx="${i}" oncontextmenu="showTrackMenu(event, '${t.id}'); return false;">
             <div class="track-num"><span>${i + 1}</span></div>
             <div class="track-title">${escapeHtml(t.title)}<div style="font-size:12px;color:var(--text-dim);font-weight:400;margin-top:2px">${escapeHtml(t.artist)} ${badges}</div></div>
-            <div class="track-meta">${escapeHtml(t.album)}</div>
+            <div class="track-meta">${escapeHtml(displayTrackAlbum(t))}</div>
             <div class="track-time">${fmtTime(t.duration)}</div>
             <button class="track-menu" onclick="event.stopPropagation(); showTrackMenu(event, '${t.id}')">⋯</button>
         </div>`;
@@ -2487,7 +2671,7 @@ function renderAlbumDetail(key, isAudiobook) {
             <div class="detail-art">${albumArtHTML(album)}</div>
             <div class="detail-info">
                 <div class="detail-kind">${isAudiobook ? 'Audiobook' : 'Album'}</div>
-                <div class="detail-name">${escapeHtml(album.name)}</div>
+                <div class="detail-name">${escapeHtml(displayAlbumName(album))}</div>
                 <div class="detail-author">${escapeHtml(album.artist)}</div>
                 <div class="detail-stats">${itemCount} ${itemLabel}${itemCount !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
                 <div class="detail-actions">
@@ -2660,7 +2844,7 @@ function renderHomeAlbumCard(album, kind) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
             </div>
-            <div class="album-name">${escapeHtml(album.name)}</div>
+            <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
             <div class="album-artist">${escapeHtml(album.artist)}</div>
         </div>`;
 }
@@ -2892,7 +3076,7 @@ function updateTrackInfo() {
     $('player-title').textContent = t.title;
     $('player-artist').textContent = t.artist;
     $('np-title').textContent = t.title;
-    $('np-artist').textContent = `${t.artist} — ${t.album}`;
+    $('np-artist').textContent = `${t.artist} — ${displayTrackAlbum(t)}`;
     const html = artHTML(t);
     $('player-art').innerHTML = html;
     $('np-art').innerHTML = html;
@@ -3369,7 +3553,7 @@ function confirmDeleteAlbum(key) {
     const album = getAlbum(key);
     if (!album) return;
     showModal(`
-        <div class="modal-title">Delete "${escapeHtml(album.name)}"?</div>
+        <div class="modal-title">Delete "${escapeHtml(displayAlbumName(album))}"?</div>
         <div style="color:var(--text-dim);font-size:14px;margin-bottom:20px;line-height:1.5">This will permanently remove ${album.tracks.length} track${album.tracks.length !== 1 ? 's' : ''} from your library.</div>
         <div class="modal-actions">
             <button class="btn-text" onclick="hideModal()">Cancel</button>
