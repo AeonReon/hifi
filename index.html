@@ -538,6 +538,28 @@
         .track-list-header > :nth-child(4) { text-align: right; }
 
         /* ===== ALBUM DETAIL HERO ===== */
+        .detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 38px;
+            padding: 0 16px 0 10px;
+            margin-bottom: 18px;
+            border-radius: 20px;
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: -0.1px;
+            transition: transform 0.1s, box-shadow 0.15s;
+            box-shadow: var(--shadow-sm);
+        }
+        .detail-back:hover { box-shadow: var(--shadow); }
+        .detail-back:active { transform: scale(0.96); }
+
         .detail-hero {
             display: flex;
             gap: 28px;
@@ -583,7 +605,40 @@
             color: var(--text-dim);
             margin-bottom: 22px;
         }
-        .detail-actions { display: flex; gap: 10px; align-items: center; }
+        .detail-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+        /* 3-way category picker (Songs / Album / Audiobook) sitting in the
+           detail-hero action row. Inactive pills show the gradient border;
+           the active one fills with the accent so the choice reads at a glance. */
+        .cat-picker {
+            display: inline-flex;
+            gap: 0;
+            padding: 3px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .cat-pill {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: -0.1px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, transform 0.1s;
+        }
+        .cat-pill:hover { color: var(--text); }
+        .cat-pill:active { transform: scale(0.96); }
+        .cat-pill.active {
+            background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+            color: var(--ink-deep);
+            box-shadow: 0 2px 8px rgba(217, 160, 45, 0.32);
+        }
 
         .btn-play {
             display: flex;
@@ -1315,6 +1370,22 @@
         .play-btn.is-playing .icon-play, .np-play.is-playing .icon-play { display: none; }
         .play-btn.is-playing .icon-pause, .np-play.is-playing .icon-pause { display: block; }
 
+        /* Yellow artwork play/pause overlay: hide the pause icon by default;
+           when the current track belongs to this album, swap to pause + keep
+           the button visible without needing hover. */
+        .play-overlay .icon-pause { display: none; }
+        .play-overlay.is-playing .icon-play { display: none; }
+        .play-overlay.is-playing .icon-pause { display: block; }
+        .play-overlay.is-playing { opacity: 1; transform: translateY(0); }
+        @keyframes hifi-play-pop {
+            0%   { transform: scale(1); }
+            45%  { transform: scale(1.22); }
+            100% { transform: scale(1); }
+        }
+        .play-overlay.pop { animation: hifi-play-pop 0.32s ease-out; }
+        .play-overlay { transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s; }
+        .play-overlay.is-playing { box-shadow: 0 8px 22px rgba(217, 160, 45, 0.55); }
+
         /* Build version pill (bottom-right, very low key) */
         .build-pill {
             position: fixed;
@@ -1812,7 +1883,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v17';
+const BUILD = 'v19';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -1925,8 +1996,13 @@ const state = {
     tracks: [],
     playlists: [],
     audiobookIds: new Set(),
+    // albumKey -> 'song' | 'album' | 'audiobook'. Missing entries fall back to
+    // defaultCategoryForKey() — solo (unknown-album, single-file) tracks default
+    // to 'song' so loose files don't pile up in Albums; everything else 'album'.
+    categoryMap: new Map(),
     settings: { volume: 0.8, speed: 1, repeat: 'off', shuffle: false },
     currentView: { kind: 'home', id: null },
+    viewHistory: [],
     queue: [],
     queueIdx: -1,
     currentTrack: null,
@@ -2447,6 +2523,27 @@ function albumArtHTML(album) {
     return placeholderArt(placeholderSeed(album));
 }
 
+// Yellow play/pause button rendered on top of every album/song/audiobook tile.
+// Both icons live inside; CSS swaps them via .is-playing. Click is wired
+// in bindAlbumCards() so it consults current playback state and animates.
+function renderPlayOverlay(albumKeyVal) {
+    return `<button class="play-overlay" data-album-key="${escapeHtml(albumKeyVal)}" title="Play / Pause" aria-label="Play / Pause">
+        <svg class="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+    </button>`;
+}
+
+// Three-way Songs / Album / Audiobook picker shown in the detail-hero action row.
+function renderCategoryPicker(key) {
+    const cur = albumCategory(key);
+    const pill = (cat, label) => `<button class="cat-pill ${cur === cat ? 'active' : ''}" onclick="setCategory(${jsArg(key)}, '${cat}')" title="Mark as ${label}">${label}</button>`;
+    return `<div class="cat-picker" role="group" aria-label="Category">
+        ${pill('song', 'Songs')}
+        ${pill('album', 'Album')}
+        ${pill('audiobook', 'Audiobook')}
+    </div>`;
+}
+
 // ============================================================
 // IMPORT
 // ============================================================
@@ -2525,7 +2622,10 @@ async function importFiles(fileList) {
 
             await dbPut('tracks', track);
             state.tracks.push(track);
-            if (isAudiobook) state.audiobookIds.add(albumKey(track));
+            if (isAudiobook) {
+                state.audiobookIds.add(albumKey(track));
+                state.categoryMap.set(albumKey(track), 'audiobook');
+            }
             added++;
         } catch (err) {
             console.error('Import error', file.name, err);
@@ -2533,6 +2633,7 @@ async function importFiles(fileList) {
     }
 
     saveAudiobookFlags();
+    saveCategoryMap();
     refreshSidebarCounts();
     render();
     const lyricsNote = lyricsAttached ? ` · lyrics on ${lyricsAttached}` : '';
@@ -2550,8 +2651,33 @@ function albumKey(track) {
     return (track.albumArtist || track.artist) + '\t' + track.album;
 }
 
+// Default 3-way category for an album group when the user hasn't overridden it.
+function defaultCategoryForKey(key) {
+    if (key && key.startsWith('__solo__\t')) return 'song';
+    return 'album';
+}
+
+function albumCategory(key) {
+    if (state.categoryMap.has(key)) return state.categoryMap.get(key);
+    // Legacy: any key previously flagged as audiobook should resolve to 'audiobook'
+    if (state.audiobookIds.has(key)) return 'audiobook';
+    return defaultCategoryForKey(key);
+}
+
+async function setAlbumCategory(key, category) {
+    if (!['song', 'album', 'audiobook'].includes(category)) return;
+    state.categoryMap.set(key, category);
+    if (category === 'audiobook') state.audiobookIds.add(key);
+    else state.audiobookIds.delete(key);
+    await Promise.all([saveCategoryMap(), saveAudiobookFlags()]);
+}
+
 async function saveAudiobookFlags() {
     await dbPut('meta', { key: 'audiobookAlbums', value: Array.from(state.audiobookIds), migratedSoloV1: true });
+}
+
+async function saveCategoryMap() {
+    await dbPut('meta', { key: 'categoryMap', value: Array.from(state.categoryMap.entries()) });
 }
 
 // ============================================================
@@ -2583,6 +2709,18 @@ async function loadAll() {
         const stored = await dbGet('meta', 'audiobookAlbums');
         await dbPut('meta', { ...(stored || {}), key: 'audiobookAlbums', value: Array.from(next), migratedSepV2: true });
     }
+    // Load 3-way categoryMap (song/album/audiobook). Audiobook flags are
+    // mirrored into it so legacy state still works.
+    const cm = await dbGet('meta', 'categoryMap');
+    state.categoryMap = new Map(cm?.value || []);
+    let cmDirty = false;
+    for (const k of state.audiobookIds) {
+        if (state.categoryMap.get(k) !== 'audiobook') {
+            state.categoryMap.set(k, 'audiobook');
+            cmDirty = true;
+        }
+    }
+    if (cmDirty) saveCategoryMap();
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
     // Backfill chapters for tracks imported before chapter parsing existed
@@ -2635,27 +2773,20 @@ async function backfillChapters() {
 // ============================================================
 // GROUPING / VIEWS
 // ============================================================
-function getAlbums() {
+function groupTracksByCategory(category) {
     const groups = {};
     for (const t of state.tracks) {
         const k = albumKey(t);
-        if (state.audiobookIds.has(k) || t.kind === 'audiobook') continue;
+        if (albumCategory(k) !== category) continue;
         if (!groups[k]) groups[k] = { key: k, name: t.album, artist: t.albumArtist || t.artist, tracks: [] };
         groups[k].tracks.push(t);
     }
     return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function getAudiobooks() {
-    const groups = {};
-    for (const t of state.tracks) {
-        const k = albumKey(t);
-        if (!state.audiobookIds.has(k) && t.kind !== 'audiobook') continue;
-        if (!groups[k]) groups[k] = { key: k, name: t.album, artist: t.albumArtist || t.artist, tracks: [] };
-        groups[k].tracks.push(t);
-    }
-    return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
-}
+function getAlbums() { return groupTracksByCategory('album'); }
+function getAudiobooks() { return groupTracksByCategory('audiobook'); }
+function getSongAlbums() { return groupTracksByCategory('song'); }
 
 function getAlbum(key) {
     const tracks = state.tracks.filter(t => albumKey(t) === key);
@@ -2734,21 +2865,34 @@ function renderAlbumsView(albums, title, kind) {
 function renderAlbumCard(album, kind) {
     const detailKind = kind === 'audiobooks' ? 'audiobook' : 'album';
     return `
-        <div class="album-card" onclick="openDetail('${detailKind}', ${jsArg(album.key)})">
+        <div class="album-card" data-album-key="${escapeHtml(album.key)}" data-album-kind="${detailKind}" onclick="openDetail('${detailKind}', ${jsArg(album.key)})">
             <div class="album-art">
                 ${albumArtHTML(album)}
-                <button class="play-overlay" onclick="event.stopPropagation(); playAlbum(${jsArg(album.key)})">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                </button>
+                ${renderPlayOverlay(album.key)}
             </div>
             <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
             <div class="album-artist">${escapeHtml(album.artist)}</div>
         </div>`;
 }
 
+function isAudiobookTrack(t) {
+    return albumCategory(albumKey(t)) === 'audiobook' || t.kind === 'audiobook';
+}
+
+// Tracks belonging to album-groups categorised as 'song'.
+function getSongTracks() {
+    return state.tracks.filter(t => albumCategory(albumKey(t)) === 'song');
+}
+
+// Anything not an audiobook — used for "Recently Added" so the user sees songs
+// AND new album tracks they just imported.
+function getListenableTracks() {
+    return state.tracks.filter(t => !isAudiobookTrack(t));
+}
+
 function renderSongsView() {
     if (!state.tracks.length) return renderEmptyLibrary();
-    let tracks = applySearch([...state.tracks]);
+    let tracks = applySearch(getSongTracks());
     tracks.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     return `
         <div class="view-header">
@@ -2761,6 +2905,10 @@ function renderSongsView() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                     Play All
                 </button>
+                <button class="btn-ghost" onclick="shufflePlay(${jsArg(tracks.map(t => t.id))})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                    Shuffle
+                </button>
             </div>
         </div>
         ${renderTrackList(tracks)}`;
@@ -2768,7 +2916,7 @@ function renderSongsView() {
 
 function renderRecentsView() {
     if (!state.tracks.length) return renderEmptyLibrary();
-    const tracks = [...state.tracks].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 100);
+    const tracks = getListenableTracks().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 100);
     return `
         <div class="view-header">
             <div>
@@ -2810,6 +2958,36 @@ function renderTrackRow(t, i) {
         </div>`;
 }
 
+// Human label for any view object — used for the back-button hint so users
+// see *where* they'll land before tapping.
+function viewLabel(view) {
+    if (!view) return 'Back';
+    if (view.kind === 'home') return 'Home';
+    if (view.kind === 'albums') return 'Albums';
+    if (view.kind === 'songs') return 'Songs';
+    if (view.kind === 'audiobooks') return 'Audiobooks';
+    if (view.kind === 'recents') return 'Recently Added';
+    if (view.kind === 'album' || view.kind === 'audiobook') {
+        const a = getAlbum(view.id);
+        return a ? displayAlbumName(a) : 'Back';
+    }
+    if (view.kind === 'playlist') {
+        const pl = state.playlists.find(p => p.id === view.id);
+        return pl ? pl.name : 'Playlist';
+    }
+    return 'Back';
+}
+
+function renderDetailBackBar() {
+    const prev = state.viewHistory[state.viewHistory.length - 1];
+    const label = prev ? viewLabel(prev) : 'Home';
+    return `
+        <button class="detail-back" onclick="goBack()" aria-label="Back to ${escapeHtml(label)}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>${escapeHtml(label)}</span>
+        </button>`;
+}
+
 function renderAlbumDetail(key, isAudiobook) {
     const album = getAlbum(key);
     if (!album) { state.currentView = { kind: 'albums' }; return renderAlbumsView(getAlbums(), 'Albums', 'albums'); }
@@ -2819,11 +2997,14 @@ function renderAlbumDetail(key, isAudiobook) {
     const singleWithChapters = isAudiobook && album.tracks.length === 1 && Array.isArray(album.tracks[0].chapters) && album.tracks[0].chapters.length > 1;
     const itemCount = singleWithChapters ? album.tracks[0].chapters.length : album.tracks.length;
     const itemLabel = isAudiobook ? 'chapter' : 'track';
+    const category = albumCategory(key);
+    const kindLabel = category === 'audiobook' ? 'Audiobook' : category === 'song' ? 'Songs' : 'Album';
     return `
+        ${renderDetailBackBar()}
         <div class="detail-hero">
             <div class="detail-art">${albumArtHTML(album)}</div>
             <div class="detail-info">
-                <div class="detail-kind">${isAudiobook ? 'Audiobook' : 'Album'}</div>
+                <div class="detail-kind">${kindLabel}</div>
                 <div class="detail-name">${escapeHtml(displayAlbumName(album))}</div>
                 <div class="detail-author">${escapeHtml(album.artist)}</div>
                 <div class="detail-stats">${itemCount} ${itemLabel}${itemCount !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
@@ -2835,9 +3016,7 @@ function renderAlbumDetail(key, isAudiobook) {
                     ${singleWithChapters ? '' : `<button class="btn-icon" onclick="shufflePlay(${jsArg(trackIds)})" title="Shuffle">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
                     </button>`}
-                    <button class="btn-icon" onclick="toggleAudiobook(${jsArg(key)})" title="${isAudiobook ? 'Treat as music album' : 'Mark as audiobook'}">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                    </button>
+                    ${renderCategoryPicker(key)}
                     <button class="btn-icon danger" onclick="confirmDeleteAlbum(${jsArg(key)})" title="Delete album">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                     </button>
@@ -2878,6 +3057,7 @@ function renderPlaylistDetail(id) {
     const tracks = pl.trackIds.map(tid => state.tracks.find(t => t.id === tid)).filter(Boolean);
     const totalSec = tracks.reduce((s, t) => s + (t.duration || 0), 0);
     return `
+        ${renderDetailBackBar()}
         <div class="detail-hero">
             <div class="detail-art">${tracks.length ? albumArtHTML({ name: pl.name, tracks }) : placeholderArt(pl.name)}</div>
             <div class="detail-info">
@@ -2918,32 +3098,64 @@ function render() {
 
     bindTrackRows();
     bindHomeCards();
+    bindAlbumCards();
+    bindPlayOverlays();
     refreshSidebarCounts();
     refreshNavActive();
+    updatePlayUI();
 }
 
 function bindHomeCards() {
     document.querySelectorAll('.home-row .home-card[data-album-key]').forEach(el => {
         el.addEventListener('click', (e) => {
             if (e.target.closest('.play-overlay')) return;
-            const kind = el.dataset.albumKind === 'audiobook' ? 'audiobook' : 'album';
+            const cat = albumCategory(el.dataset.albumKey);
+            const kind = cat === 'audiobook' ? 'audiobook' : 'album';
             openDetail(kind, el.dataset.albumKey);
         });
-    });
-    document.querySelectorAll('.home-row .play-overlay[data-album-key]').forEach(b => {
-        b.addEventListener('click', (e) => { e.stopPropagation(); playAlbum(b.dataset.albumKey); });
     });
     document.querySelectorAll('.home-section-link').forEach(el => {
         el.addEventListener('click', () => navTo(el.dataset.target));
     });
 }
 
+// Single binder for every yellow artwork play/pause button. Wired after
+// every render() so freshly-rendered cards work. Toggles play/pause when
+// the current track belongs to this album group, otherwise starts the album.
+function bindPlayOverlays() {
+    document.querySelectorAll('.play-overlay[data-album-key]').forEach(b => {
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            handleAlbumPlayClick(b.dataset.albumKey, b);
+        });
+    });
+}
+
+function handleAlbumPlayClick(key, btn) {
+    if (btn) {
+        btn.classList.remove('pop');
+        // Force a reflow so the keyframe re-runs even on repeat taps.
+        void btn.offsetWidth;
+        btn.classList.add('pop');
+    }
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (_) {} }
+    const cur = state.currentTrack;
+    if (cur && albumKey(cur) === key) {
+        if (audio.paused) audio.play().catch(e => console.warn('play() rejected', e));
+        else audio.pause();
+        return;
+    }
+    playAlbum(key);
+}
+
 function renderHomeView() {
     if (!state.tracks.length) return renderEmptyLibrary();
 
-    const recents = [...state.tracks].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 12);
+    const recents = getListenableTracks().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 12);
     const audiobooks = getAudiobooks();
     const albums = getAlbums();
+    const songCount = getSongTracks().length;
 
     const recentRow = recents.length ? `
         <section class="home-section">
@@ -2983,7 +3195,7 @@ function renderHomeView() {
             <div class="home-hero-text">
                 <div class="home-hero-eyebrow">Hifi</div>
                 <div class="home-hero-title">Your library</div>
-                <div class="home-hero-sub">${state.tracks.length} track${state.tracks.length !== 1 ? 's' : ''} · ${albums.length} album${albums.length !== 1 ? 's' : ''} · ${audiobooks.length} audiobook${audiobooks.length !== 1 ? 's' : ''}</div>
+                <div class="home-hero-sub">${songCount} song${songCount !== 1 ? 's' : ''} · ${albums.length} album${albums.length !== 1 ? 's' : ''} · ${audiobooks.length} audiobook${audiobooks.length !== 1 ? 's' : ''}</div>
             </div>
         </div>
         ${recentRow}
@@ -2997,9 +3209,7 @@ function renderHomeAlbumCard(album, kind) {
         <div class="album-card home-card" data-album-key="${escapeHtml(album.key)}" data-album-kind="${kind}">
             <div class="album-art">
                 ${albumArtHTML(album)}
-                <button class="play-overlay" data-album-key="${escapeHtml(album.key)}" title="Play">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                </button>
+                ${renderPlayOverlay(album.key)}
             </div>
             <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
             <div class="album-artist">${escapeHtml(album.artist)}</div>
@@ -3008,16 +3218,14 @@ function renderHomeAlbumCard(album, kind) {
 
 function renderHomeTrackCard(t) {
     const albumKeyVal = albumKey(t);
-    const isAb = state.audiobookIds.has(albumKeyVal) || t.kind === 'audiobook';
-    const kind = isAb ? 'audiobook' : 'album';
+    const cat = albumCategory(albumKeyVal);
+    const kind = cat === 'audiobook' ? 'audiobook' : (cat === 'song' ? 'song' : 'album');
     const fakeAlbum = { name: t.album, artist: t.artist, tracks: [t] };
     return `
         <div class="album-card home-card home-card-narrow" data-album-key="${escapeHtml(albumKeyVal)}" data-album-kind="${kind}">
             <div class="album-art">
                 ${albumArtHTML(fakeAlbum)}
-                <button class="play-overlay" data-album-key="${escapeHtml(albumKeyVal)}" title="Play">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                </button>
+                ${renderPlayOverlay(albumKeyVal)}
             </div>
             <div class="album-name">${escapeHtml(t.title)}</div>
             <div class="album-artist">${escapeHtml(t.artist)}</div>
@@ -3032,12 +3240,28 @@ function bindTrackRows() {
             const list = Array.from(document.querySelectorAll('.track-row')).map(r => r.dataset.id);
             playList(list, list.indexOf(id));
         });
+        const id = row.dataset.id;
+        if (id) attachLongPress(row, (e) => showTrackMenu(e, id));
+    });
+}
+
+function bindAlbumCards() {
+    // Touch long-press + right-click on every album card (grid view and detail rows)
+    document.querySelectorAll('.album-card').forEach(card => {
+        const key = card.dataset.albumKey;
+        if (!key) return;
+        const isAb = card.dataset.albumKind === 'audiobook';
+        attachLongPress(card, (e) => showAlbumMenu(e, key, isAb));
+        card.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showAlbumMenu(e, key, isAb);
+        });
     });
 }
 
 function refreshSidebarCounts() {
     $('albums-count').textContent = getAlbums().length || '';
-    $('songs-count').textContent = state.tracks.filter(t => !state.audiobookIds.has(albumKey(t)) && t.kind !== 'audiobook').length || '';
+    $('songs-count').textContent = getSongTracks().length || '';
     $('audiobooks-count').textContent = getAudiobooks().length || '';
     renderPlaylistsList();
 }
@@ -3050,7 +3274,7 @@ function renderPlaylistsList() {
             <span class="label">${escapeHtml(p.name)}</span>
         </div>`).join('');
     el.querySelectorAll('.nav-item').forEach(n => {
-        n.addEventListener('click', () => { state.currentView = { kind: 'playlist', id: n.dataset.pl }; render(); closeSidebar(); });
+        n.addEventListener('click', () => openDetail('playlist', n.dataset.pl));
     });
 }
 
@@ -3126,7 +3350,9 @@ async function playCurrent() {
 
 function togglePlay() {
     if (!state.currentTrack) {
-        if (state.tracks.length) playList(state.tracks.map(t => t.id), 0);
+        const songs = getSongTracks();
+        if (songs.length) playList(songs.map(t => t.id), 0);
+        else if (state.tracks.length) playList(state.tracks.map(t => t.id), 0);
         return;
     }
     // Don't set isPlaying optimistically — the audio element's 'play'/'pause' events
@@ -3225,6 +3451,11 @@ function updatePlayUI() {
     $('pause-icon').style.display = playing ? '' : 'none';
     $('np-play-icon').style.display = playing ? 'none' : '';
     $('np-pause-icon').style.display = playing ? '' : 'none';
+    // Every yellow artwork overlay reflects current-album playback state.
+    const curKey = state.currentTrack ? albumKey(state.currentTrack) : null;
+    document.querySelectorAll('.play-overlay[data-album-key]').forEach(el => {
+        el.classList.toggle('is-playing', playing && el.dataset.albumKey === curKey);
+    });
 }
 
 function updateTrackInfo() {
@@ -3663,7 +3894,33 @@ function updateShuffleRepeatUI() {
 // ============================================================
 // NAV
 // ============================================================
+// Push the current view onto the history stack so goBack() can return to it.
+// Dedupe consecutive duplicates and cap depth so audiobook-skipping sessions
+// don't grow an unbounded stack.
+function pushHistory() {
+    const cur = state.currentView;
+    if (!cur) return;
+    const last = state.viewHistory[state.viewHistory.length - 1];
+    const same = last && last.kind === cur.kind && last.id === cur.id;
+    if (same) return;
+    state.viewHistory.push({ kind: cur.kind, id: cur.id });
+    if (state.viewHistory.length > 30) state.viewHistory.shift();
+}
+
+function goBack() {
+    if (state.viewHistory.length === 0) {
+        // Nothing to pop — land on home so the user is never stranded.
+        state.currentView = { kind: 'home', id: null };
+    } else {
+        state.currentView = state.viewHistory.pop();
+    }
+    render();
+    $('main').scrollTo({ top: 0 });
+    closeSidebar();
+}
+
 function openDetail(kind, id) {
+    pushHistory();
     state.currentView = { kind, id };
     render();
     $('main').scrollTo({ top: 0, behavior: 'smooth' });
@@ -3671,6 +3928,7 @@ function openDetail(kind, id) {
 }
 
 function navTo(view) {
+    pushHistory();
     state.currentView = { kind: view };
     render();
     $('main').scrollTo({ top: 0 });
@@ -3715,9 +3973,7 @@ async function createPlaylist() {
     await dbPut('playlists', pl);
     state.playlists.push(pl);
     hideModal();
-    state.currentView = { kind: 'playlist', id: pl.id };
-    render();
-    closeSidebar();
+    openDetail('playlist', pl.id);
 }
 
 function renamePlaylist(id) {
@@ -3784,46 +4040,41 @@ async function deleteAlbum(key) {
     }
     state.tracks = state.tracks.filter(t => albumKey(t) !== key);
     state.audiobookIds.delete(key);
+    state.categoryMap.delete(key);
     saveAudiobookFlags();
+    saveCategoryMap();
     hideModal();
     state.currentView = { kind: 'albums' };
     render();
     toast('Album deleted');
 }
 
-async function toggleAudiobook(key) {
-    if (state.audiobookIds.has(key)) state.audiobookIds.delete(key);
-    else state.audiobookIds.add(key);
-    await saveAudiobookFlags();
-    const wasAudiobook = state.currentView.kind === 'audiobook';
-    state.currentView = { kind: wasAudiobook ? 'audiobook' : 'album', id: key };
-    if (state.audiobookIds.has(key)) state.currentView.kind = 'audiobook';
-    else state.currentView.kind = 'album';
+async function setCategory(key, category) {
+    await setAlbumCategory(key, category);
+    // If we're on a detail page for this album, switch the view kind so the
+    // back-bar label, header, and audiobook-specific UI track the new category.
+    const v = state.currentView;
+    if (v && (v.kind === 'album' || v.kind === 'audiobook') && v.id === key) {
+        state.currentView = { kind: category === 'audiobook' ? 'audiobook' : 'album', id: key };
+    }
     render();
-    toast(state.audiobookIds.has(key) ? 'Marked as audiobook' : 'Marked as music album');
+    toast(category === 'song' ? 'Marked as Song' : category === 'audiobook' ? 'Marked as Audiobook' : 'Marked as Album');
+}
+
+// Back-compat shim: old code-paths and any cached PWA shells still call toggleAudiobook.
+async function toggleAudiobook(key) {
+    const cur = albumCategory(key);
+    await setCategory(key, cur === 'audiobook' ? 'album' : 'audiobook');
 }
 
 // ============================================================
 // CONTEXT MENU
 // ============================================================
-function showTrackMenu(e, trackId) {
-    e.preventDefault();
-    e.stopPropagation();
-    const track = state.tracks.find(t => t.id === trackId);
-    if (!track) return;
+function openCtxMenu(e, items) {
     const menu = $('ctx-menu');
-    const items = [
-        { label: 'Play next', action: () => playNext(trackId) },
-        { label: 'Add to queue', action: () => addToQueue(trackId) },
-        { divider: true },
-        { label: 'Stars…', action: () => showBookmarksModal(trackId) },
-        { label: 'Add to playlist...', action: () => addToPlaylistPrompt(trackId) },
-        { divider: true },
-        { label: 'Remove from library', action: () => deleteTrack(trackId), danger: true },
-    ];
     menu.innerHTML = items.map((it, i) => it.divider
         ? '<div class="ctx-divider"></div>'
-        : `<div class="ctx-item ${it.danger ? 'danger' : ''}" data-i="${i}">${it.label}</div>`).join('');
+        : `<div class="ctx-item ${it.danger ? 'danger' : ''}" data-i="${i}">${escapeHtml(it.label)}</div>`).join('');
     menu.classList.add('active');
 
     let x = (e.clientX || (e.touches && e.touches[0]?.clientX)) || window.innerWidth / 2;
@@ -3832,6 +4083,8 @@ function showTrackMenu(e, trackId) {
         const r = menu.getBoundingClientRect();
         if (x + r.width > window.innerWidth - 8) x = window.innerWidth - r.width - 8;
         if (y + r.height > window.innerHeight - 8) y = window.innerHeight - r.height - 8;
+        if (x < 8) x = 8;
+        if (y < 8) y = 8;
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
     });
@@ -3842,9 +4095,111 @@ function showTrackMenu(e, trackId) {
         el.addEventListener('click', () => {
             const i = parseInt(el.dataset.i);
             menu.classList.remove('active');
-            items[i].action();
+            const item = items[i];
+            if (item && item.action) item.action();
         });
     });
+}
+
+function categoryMenuItems(key) {
+    const cur = albumCategory(key);
+    const tick = (c) => cur === c ? '✓ ' : '   ';
+    return [
+        { label: tick('song') + 'Songs', action: () => setCategory(key, 'song') },
+        { label: tick('album') + 'Album', action: () => setCategory(key, 'album') },
+        { label: tick('audiobook') + 'Audiobook', action: () => setCategory(key, 'audiobook') },
+    ];
+}
+
+function showTrackMenu(e, trackId) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    const track = state.tracks.find(t => t.id === trackId);
+    if (!track) return;
+    const key = albumKey(track);
+    const items = [
+        { label: 'Play next', action: () => playNext(trackId) },
+        { label: 'Add to queue', action: () => addToQueue(trackId) },
+        { divider: true },
+        ...categoryMenuItems(key),
+        { divider: true },
+        { label: 'Stars…', action: () => showBookmarksModal(trackId) },
+        { label: 'Add to playlist...', action: () => addToPlaylistPrompt(trackId) },
+        { divider: true },
+        { label: 'Remove from library', action: () => deleteTrack(trackId), danger: true },
+    ];
+    openCtxMenu(e, items);
+}
+
+function showAlbumMenu(e, key, isAudiobook) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    const album = getAlbum(key);
+    if (!album) return;
+    const trackIds = album.tracks.map(t => t.id);
+    const items = [
+        { label: 'Play', action: () => playList(trackIds) },
+        { label: 'Shuffle', action: () => shufflePlay(trackIds) },
+        { label: 'Add to queue', action: () => { for (const id of trackIds) addToQueue(id); } },
+        { divider: true },
+        ...categoryMenuItems(key),
+        { divider: true },
+        { label: 'Open', action: () => openDetail(albumCategory(key) === 'audiobook' ? 'audiobook' : 'album', key) },
+        { divider: true },
+        { label: 'Delete album', action: () => confirmDeleteAlbum(key), danger: true },
+    ];
+    openCtxMenu(e, items);
+}
+
+// Long-press helper: fires `handler` after `delay`ms of unmoved touch, then
+// swallows the trailing click so the underlying onclick (e.g. open detail) does
+// NOT fire. Works on iOS (where contextmenu doesn't fire on long-press).
+function attachLongPress(el, handler, opts = {}) {
+    const delay = opts.delay || 480;
+    let timer = null;
+    let startX = 0, startY = 0;
+    let fired = false;
+
+    const fire = () => {
+        fired = true;
+        try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) {}
+        handler({
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            clientX: startX,
+            clientY: startY,
+        });
+    };
+    const start = (e) => {
+        const t = e.touches ? e.touches[0] : e;
+        startX = t.clientX; startY = t.clientY;
+        fired = false;
+        clearTimeout(timer);
+        timer = setTimeout(fire, delay);
+    };
+    const move = (e) => {
+        if (timer === null) return;
+        const t = e.touches ? e.touches[0] : e;
+        if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+            clearTimeout(timer); timer = null;
+        }
+    };
+    const end = () => { clearTimeout(timer); timer = null; };
+    const clickGuard = (e) => {
+        if (fired) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            fired = false;
+        }
+    };
+
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: true });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+    // Capture-phase click guard so we beat the inline onclick handlers
+    el.addEventListener('click', clickGuard, true);
 }
 
 document.addEventListener('click', (e) => {
@@ -4219,6 +4574,8 @@ document.addEventListener('keydown', (e) => {
 
 // Expose required functions for inline handlers
 window.openDetail = openDetail;
+window.goBack = goBack;
+window.setCategory = setCategory;
 window.playList = playList;
 window.playAlbum = playAlbum;
 window.shufflePlay = shufflePlay;
