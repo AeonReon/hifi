@@ -427,9 +427,15 @@
             transform: translateY(8px);
             transition: opacity 0.2s, transform 0.2s;
             box-shadow: 0 6px 16px rgba(217, 160, 45, 0.38);
+            z-index: 2;
         }
         .album-card:hover .play-overlay { opacity: 1; transform: translateY(0); }
         .play-overlay:active { transform: scale(0.92); }
+        /* Touch devices have no real hover — the button was invisible at tap
+           time, so taps landed on the card behind it. Always show on touch. */
+        @media (hover: none) {
+            .play-overlay { opacity: 1; transform: translateY(0); }
+        }
 
         .album-name {
             font-size: 14px;
@@ -1806,7 +1812,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v15';
+const BUILD = 'v16';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
