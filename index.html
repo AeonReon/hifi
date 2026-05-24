@@ -1812,7 +1812,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v16';
+const BUILD = 'v17';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -2546,8 +2546,8 @@ async function importFiles(fileList) {
 function albumKey(track) {
     // Unknown-album tracks each become their own pseudo-album so they get
     // unique cards/colours in the Albums view instead of all piling into one tile.
-    if (isUnknownAlbum(track.album)) return '__solo__\x00' + track.id;
-    return (track.albumArtist || track.artist) + ' ' + track.album;
+    if (isUnknownAlbum(track.album)) return '__solo__\t' + track.id;
+    return (track.albumArtist || track.artist) + '\t' + track.album;
 }
 
 async function saveAudiobookFlags() {
@@ -2569,11 +2569,19 @@ async function loadAll() {
         for (const k of state.audiobookIds) next.add(k);
         state.tracks.forEach(t => {
             if (!isUnknownAlbum(t.album)) return;
-            const oldKey = (t.albumArtist || t.artist) + '\x00' + t.album;
+            const oldKey = (t.albumArtist || t.artist) + '\t' + t.album;
             if (state.audiobookIds.has(oldKey)) next.add(albumKey(t));
         });
         state.audiobookIds = next;
         await dbPut('meta', { key: 'audiobookAlbums', value: Array.from(next), migratedSoloV1: true });
+    }
+    // v16+: separator changed from \x00 to \t to avoid HTML attribute mangling.
+    if (!ab?.migratedSepV2) {
+        const next = new Set();
+        for (const k of state.audiobookIds) next.add(k.replace(/\x00/g, '\t'));
+        state.audiobookIds = next;
+        const stored = await dbGet('meta', 'audiobookAlbums');
+        await dbPut('meta', { ...(stored || {}), key: 'audiobookAlbums', value: Array.from(next), migratedSepV2: true });
     }
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
