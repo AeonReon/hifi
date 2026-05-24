@@ -1,4 +1,4 @@
-const CACHE = 'hifi-v13';
+const CACHE = 'hifi-v15';
 const ASSETS = [
   './',
   './index.html',
