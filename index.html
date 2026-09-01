@@ -1979,7 +1979,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v20';
+const BUILD = 'v21';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -3586,7 +3586,10 @@ function renderShelfView() {
     }
     const owned = ownedShelfIds();
     const list = shelfVisible();
-    const sections = ['All', ...Array.from(new Set(sh.tracks.map(t => t.genre))).sort()];
+    // "New" is the inbox everything lands in, so it sits first — it is the one
+    // you actually want to look at.
+    const found = Array.from(new Set(sh.tracks.map(t => t.genre))).sort();
+    const sections = ['All', ...found.filter(g => g === 'New'), ...found.filter(g => g !== 'New')];
     const chips = sections.map(g =>
         `<button class="shelf-chip ${g === sh.section ? 'on' : ''}" data-section="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('');
     const rows = list.map(t => {
