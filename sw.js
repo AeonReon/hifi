@@ -1,4 +1,4 @@
-const CACHE = 'hifi-v19';
+const CACHE = 'hifi-v20';
 const ASSETS = [
   './',
   './index.html',
@@ -28,6 +28,9 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // The Shelf streams and downloads from another origin (the Mac mini). Never
+  // touch those — a 400 MB audiobook must not end up in the app-shell cache.
+  if (url.origin !== self.location.origin && !url.hostname.endsWith('cdnjs.cloudflare.com')) return;
   const isHTML = req.mode === 'navigate'
     || url.pathname === '/'
     || url.pathname.endsWith('.html');

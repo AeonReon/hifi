@@ -1652,6 +1652,93 @@
         .np-chapter-num { font-variant-numeric: tabular-nums; color: var(--text-faint); font-weight: 600; }
         .np-chapter-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .np-chapter-time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-faint); }
+        /* ===== THE SHELF (everything that lives on the mini) ===== */
+        .shelf-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+        .shelf-chip {
+            padding: 7px 13px;
+            border-radius: 999px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-dim);
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            transition: transform 0.1s, color 0.12s, background 0.12s;
+        }
+        .shelf-chip:active { transform: scale(0.96); }
+        .shelf-chip.on {
+            color: var(--ink-deep);
+            background:
+                linear-gradient(var(--accent-glow), var(--accent-glow)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+        }
+        .shelf-list { display: flex; flex-direction: column; gap: 2px; }
+        .shelf-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 11px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+        .shelf-row:hover { background: var(--surface-2); }
+        .shelf-row.playing .shelf-name { color: var(--accent); }
+        .shelf-row.playing .shelf-name::before { content: "▶ "; }
+        .shelf-name { font-size: 14px; font-weight: 500; color: var(--text); }
+        .shelf-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .shelf-actions { display: flex; align-items: center; gap: 8px; }
+        .shelf-dl {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            min-width: 84px;
+            justify-content: center;
+            color: var(--text);
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            transition: transform 0.1s;
+        }
+        .shelf-dl:active { transform: scale(0.96); }
+        .shelf-dl.have {
+            color: var(--accent-dim);
+            background:
+                linear-gradient(var(--accent-glow), var(--accent-glow)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+        }
+        .shelf-dl.working { color: var(--text-dim); }
+        .shelf-connect {
+            max-width: 460px;
+            margin: 8px auto;
+            padding: 26px;
+            border-radius: 16px;
+            text-align: center;
+            background:
+                linear-gradient(var(--card), var(--card)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            box-shadow: var(--shadow-sm);
+        }
+        .shelf-connect .modal-input { text-align: center; letter-spacing: 4px; font-size: 20px; }
+        .shelf-note { font-size: 12.5px; color: var(--text-dim); margin-top: 14px; line-height: 1.5; }
+        .shelf-addr {
+            width: 100%; margin-top: 10px; padding: 9px 12px;
+            border: 1px solid var(--line); border-radius: 8px;
+            background: var(--surface); color: var(--text-dim);
+            font-size: 12px; text-align: center;
+        }
+        @media (max-width: 700px) {
+            .shelf-row { padding: 12px 6px; }
+            .shelf-dl { min-width: 76px; }
+        }
+
     </style>
 </head>
 <body>
@@ -1688,6 +1775,15 @@
             <div class="nav-item" data-view="recents">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
                 <span class="label">Recently Added</span>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">On the mini</div>
+            <div class="nav-item" data-view="shelf">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/><path d="M7 3v4"/><path d="M13 8v4"/><path d="M9 13v4"/></svg>
+                <span class="label">The Shelf</span>
+                <span class="count" id="shelf-count"></span>
             </div>
         </div>
 
@@ -1883,7 +1979,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v19';
+const BUILD = 'v20';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -2010,6 +2106,20 @@ const state = {
     sleepTimer: null,
     sleepRemaining: 0,
     searchQuery: '',
+    // The Shelf: everything sitting on the mini. Browsed, streamed, or pulled
+    // down into the library above. Nothing here counts as "in your library"
+    // until you actually download it — the player stays tidy on purpose.
+    shelf: {
+        base: 'https://music.aiprofits.cc',
+        token: null,
+        tracks: [],
+        objs: new Map(),       // shelf id -> the track object playback uses
+        section: 'All',
+        loading: false,
+        loaded: false,
+        error: null,
+        busy: new Map(),       // shelf id -> download percent
+    },
 };
 
 const audio = document.getElementById('audio');
@@ -2547,7 +2657,9 @@ function renderCategoryPicker(key) {
 // ============================================================
 // IMPORT
 // ============================================================
-async function importFiles(fileList) {
+// `extra` is merged into every track created by this import — the shelf uses it
+// to stamp `shelfId` so a downloaded track knows where it came from.
+async function importFiles(fileList, extra) {
     const all = Array.from(fileList);
     const files = all.filter(isAudioFile);
     const lyricFiles = all.filter(isLyricsFile);
@@ -2618,6 +2730,7 @@ async function importFiles(fileList) {
                 chapters: chapters || null,
                 bookmarks: [],
                 lyrics: lyrics,
+                ...(extra || {}),
             };
 
             await dbPut('tracks', track);
@@ -2642,6 +2755,11 @@ async function importFiles(fileList) {
     } else {
         toast(`Added ${added} track${added !== 1 ? 's' : ''}${lyricsNote}`);
     }
+}
+
+// Any id in a queue is either a local track or a shelf track.
+function findTrack(id) {
+    return state.tracks.find(t => t.id === id) || state.shelf.objs.get(id) || null;
 }
 
 function albumKey(track) {
@@ -2723,6 +2841,8 @@ async function loadAll() {
     if (cmDirty) saveCategoryMap();
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
+    await loadShelfAuth();
+    if (state.shelf.token) loadShelf().catch(() => {});
     // Backfill chapters for tracks imported before chapter parsing existed
     backfillChapters().catch(() => {});
     audio.volume = state.settings.volume;
@@ -2967,6 +3087,7 @@ function viewLabel(view) {
     if (view.kind === 'songs') return 'Songs';
     if (view.kind === 'audiobooks') return 'Audiobooks';
     if (view.kind === 'recents') return 'Recently Added';
+    if (view.kind === 'shelf') return 'The Shelf';
     if (view.kind === 'album' || view.kind === 'audiobook') {
         const a = getAlbum(view.id);
         return a ? displayAlbumName(a) : 'Back';
@@ -3095,7 +3216,9 @@ function render() {
     else if (v.kind === 'album') c.innerHTML = renderAlbumDetail(v.id, false);
     else if (v.kind === 'audiobook') c.innerHTML = renderAlbumDetail(v.id, true);
     else if (v.kind === 'playlist') c.innerHTML = renderPlaylistDetail(v.id);
+    else if (v.kind === 'shelf') c.innerHTML = renderShelfView();
 
+    bindShelfView();
     bindTrackRows();
     bindHomeCards();
     bindAlbumCards();
@@ -3263,6 +3386,7 @@ function refreshSidebarCounts() {
     $('albums-count').textContent = getAlbums().length || '';
     $('songs-count').textContent = getSongTracks().length || '';
     $('audiobooks-count').textContent = getAudiobooks().length || '';
+    $('shelf-count').textContent = state.shelf.tracks.length || '';
     renderPlaylistsList();
 }
 
@@ -3287,6 +3411,316 @@ function refreshNavActive() {
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 // Embed any value as a JS expression inside a double-quoted HTML attribute.
 function jsArg(v) { return JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ============================================================
+// THE SHELF
+// Everything that lives on the Mac mini — the car music master, plus the
+// spoken shelf (audiobooks, podcasts, talks). You browse it here, play a
+// track straight off the mini, or pull a copy down into the library. Only
+// what you pull down shows up in Albums / Songs / Audiobooks, which is the
+// whole point: the player stays a player.
+// ============================================================
+function shelfUrl(pathOrUrl) {
+    const base = (state.shelf.base || '').replace(/\/$/, '');
+    const u = pathOrUrl.startsWith('http') ? pathOrUrl : base + pathOrUrl;
+    return u + (u.includes('?') ? '&' : '?') + 'k=' + encodeURIComponent(state.shelf.token || '');
+}
+
+async function loadShelfAuth() {
+    const saved = await dbGet('meta', 'shelfAuth');
+    if (saved?.value) {
+        if (saved.value.base) state.shelf.base = saved.value.base;
+        state.shelf.token = saved.value.token || null;
+    }
+}
+
+async function saveShelfAuth() {
+    await dbPut('meta', { key: 'shelfAuth', value: { base: state.shelf.base, token: state.shelf.token } });
+}
+
+// Turn a catalog entry into something playback understands. Cached so the
+// same object comes back every time — queues hold ids, not copies.
+function shelfObj(t) {
+    const existing = state.shelf.objs.get('shelf:' + t.id);
+    if (existing) return existing;
+    const obj = {
+        id: 'shelf:' + t.id,
+        title: t.title,
+        artist: t.genre,
+        album: t.genre,
+        albumArtist: 'The Shelf',
+        trackNum: 0,
+        duration: t.seconds || 0,
+        mimeType: '',
+        ext: ((t.file || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '',
+        playable: true,
+        addedAt: 0,
+        kind: t.kind === 'spoken' ? 'audiobook' : 'music',
+        remote: t,
+        artwork: null,
+        chapters: null,
+        bookmarks: [],
+        lyrics: null,
+    };
+    state.shelf.objs.set(obj.id, obj);
+    return obj;
+}
+
+async function loadShelf(force) {
+    if (!state.shelf.token) return;
+    if (state.shelf.loading) return;
+    if (state.shelf.loaded && !force) return;
+    state.shelf.loading = true;
+    state.shelf.error = null;
+    if (state.currentView.kind === 'shelf') render();
+    try {
+        const res = await fetch(shelfUrl('/catalog.json'), { cache: 'no-store' });
+        if (res.status === 401) {
+            state.shelf.token = null;
+            await saveShelfAuth();
+            throw new Error('The PIN changed — connect again.');
+        }
+        if (!res.ok) throw new Error('The mini answered ' + res.status);
+        const data = await res.json();
+        state.shelf.tracks = data.tracks || [];
+        state.shelf.tracks.forEach(shelfObj);
+        state.shelf.loaded = true;
+    } catch (err) {
+        console.warn('Shelf load failed', err);
+        state.shelf.error = /Failed to fetch|NetworkError|Load failed/i.test(String(err && err.message))
+            ? 'Cannot reach the mini. It may be asleep, or you may be offline.'
+            : String(err && err.message || err);
+    } finally {
+        state.shelf.loading = false;
+        if (state.currentView.kind === 'shelf') render();
+        refreshSidebarCounts();
+    }
+}
+
+async function shelfConnect() {
+    const pinEl = $('shelf-pin');
+    const addrEl = $('shelf-addr');
+    const pin = (pinEl?.value || '').trim();
+    const addr = (addrEl?.value || '').trim().replace(/\/$/, '');
+    if (addr) state.shelf.base = addr.startsWith('http') ? addr : 'https://' + addr;
+    if (!pin) { toast('Enter the PIN'); return; }
+    try {
+        const res = await fetch(state.shelf.base + '/unlock.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.token) {
+            toast(res.status === 429 ? 'Too many tries — wait a few minutes' : 'That PIN was not right');
+            return;
+        }
+        state.shelf.token = data.token;
+        await saveShelfAuth();
+        state.shelf.loaded = false;
+        await loadShelf(true);
+        render();
+    } catch (err) {
+        console.warn('Shelf connect failed', err);
+        toast('Cannot reach the mini at that address');
+    }
+}
+
+async function shelfForget() {
+    state.shelf.token = null;
+    state.shelf.tracks = [];
+    state.shelf.loaded = false;
+    await saveShelfAuth();
+    render();
+}
+
+function ownedShelfIds() {
+    const set = new Set();
+    for (const t of state.tracks) if (t.shelfId) set.add(t.shelfId);
+    return set;
+}
+
+function fmtSize(bytes) {
+    if (!bytes) return '';
+    const mb = bytes / 1048576;
+    return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB';
+}
+
+function shelfVisible() {
+    const q = (state.searchQuery || '').toLowerCase();
+    return state.shelf.tracks.filter(t =>
+        (state.shelf.section === 'All' || t.genre === state.shelf.section) &&
+        (!q || (t.title || '').toLowerCase().includes(q) || (t.genre || '').toLowerCase().includes(q)));
+}
+
+function renderShelfView() {
+    const sh = state.shelf;
+    if (!sh.token) {
+        return `
+            <div class="view-header"><div>
+                <div class="view-title">The Shelf</div>
+                <div class="view-subtitle">Everything on the Mac mini</div>
+            </div></div>
+            <div class="shelf-connect">
+                <div class="empty-icon">⌂</div>
+                <div class="empty-title">Connect to the mini</div>
+                <div class="empty-text">Enter the PIN once and this device stays connected.</div>
+                <input class="modal-input" id="shelf-pin" inputmode="numeric" autocomplete="off" placeholder="PIN">
+                <input class="shelf-addr" id="shelf-addr" value="${escapeHtml(sh.base)}" spellcheck="false">
+                <div style="margin-top:16px"><button class="btn-primary" id="shelf-connect-btn" style="margin:0 auto">Connect</button></div>
+                <div class="shelf-note">Your music stays on the mini. Play it from here, or download a copy into this player — downloading is the only thing that adds it to your library.</div>
+            </div>`;
+    }
+    if (sh.loading && !sh.tracks.length) {
+        return `<div class="empty"><div class="empty-icon">◌</div><div class="empty-title">Reading the shelf…</div></div>`;
+    }
+    if (sh.error) {
+        return `
+            <div class="view-header"><div><div class="view-title">The Shelf</div></div></div>
+            <div class="empty">
+                <div class="empty-icon">⚠</div>
+                <div class="empty-title">The shelf is out of reach</div>
+                <div class="empty-text">${escapeHtml(sh.error)}<br>Everything you have already downloaded still plays.</div>
+                <button class="btn-primary" id="shelf-retry-btn">Try again</button>
+            </div>`;
+    }
+    const owned = ownedShelfIds();
+    const list = shelfVisible();
+    const sections = ['All', ...Array.from(new Set(sh.tracks.map(t => t.genre))).sort()];
+    const chips = sections.map(g =>
+        `<button class="shelf-chip ${g === sh.section ? 'on' : ''}" data-section="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('');
+    const rows = list.map(t => {
+        const obj = shelfObj(t);
+        const have = owned.has(t.id);
+        const pct = sh.busy.get(t.id);
+        const playing = state.currentTrack && state.currentTrack.id === obj.id;
+        const btn = pct !== undefined
+            ? `<button class="shelf-dl working">${pct}%</button>`
+            : have
+                ? `<button class="shelf-dl have" data-act="remove">✓ Downloaded</button>`
+                : `<button class="shelf-dl" data-act="download">⤓ Download</button>`;
+        const bits = [t.genre, fmtTime(t.seconds || 0), fmtSize(t.bytes)].filter(Boolean).join(' · ');
+        return `
+            <div class="shelf-row ${playing ? 'playing' : ''}" data-id="${escapeHtml(obj.id)}" data-shelf="${escapeHtml(t.id)}">
+                <div>
+                    <div class="shelf-name">${escapeHtml(t.title)}</div>
+                    <div class="shelf-sub">${escapeHtml(bits)}</div>
+                </div>
+                <div class="shelf-actions">${btn}</div>
+            </div>`;
+    }).join('');
+    return `
+        <div class="view-header">
+            <div>
+                <div class="view-title">The Shelf</div>
+                <div class="view-subtitle">${sh.tracks.length} on the mini · ${owned.size} downloaded here</div>
+            </div>
+            <div class="view-actions">
+                <button class="btn-ghost" id="shelf-refresh-btn">Refresh</button>
+            </div>
+        </div>
+        <div class="shelf-chips">${chips}</div>
+        ${list.length ? `<div class="shelf-list">${rows}</div>`
+            : `<div class="empty"><div class="empty-icon">⌕</div><div class="empty-text">Nothing here matches.</div></div>`}
+        <div class="shelf-note" style="text-align:center;margin-top:24px">
+            Tap a row to play it straight from the mini. Download to keep it in this player — remove it any time and it stays on the shelf.
+            <br><a href="#" id="shelf-forget" style="color:var(--text-faint)">Disconnect this device</a>
+        </div>`;
+}
+
+function bindShelfView() {
+    if (state.currentView.kind !== 'shelf') return;
+    const connect = $('shelf-connect-btn');
+    if (connect) {
+        connect.addEventListener('click', shelfConnect);
+        $('shelf-pin')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') shelfConnect(); });
+        setTimeout(() => $('shelf-pin')?.focus(), 60);
+    }
+    $('shelf-retry-btn')?.addEventListener('click', () => loadShelf(true));
+    $('shelf-refresh-btn')?.addEventListener('click', () => loadShelf(true));
+    $('shelf-forget')?.addEventListener('click', (e) => { e.preventDefault(); shelfForget(); });
+    document.querySelectorAll('.shelf-chip').forEach(c => {
+        c.addEventListener('click', () => { state.shelf.section = c.dataset.section; render(); });
+    });
+    document.querySelectorAll('.shelf-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+            const btn = e.target.closest('.shelf-dl');
+            const rel = row.dataset.shelf;
+            if (btn) {
+                e.stopPropagation();
+                if (btn.dataset.act === 'download') shelfDownload(rel);
+                else if (btn.dataset.act === 'remove') shelfRemove(rel);
+                return;
+            }
+            const ids = Array.from(document.querySelectorAll('.shelf-row')).map(r => r.dataset.id);
+            playList(ids, ids.indexOf(row.dataset.id));
+        });
+    });
+}
+
+// Update one row's button mid-download, so a 120 MB pull doesn't re-render
+// (and re-scroll) the whole list on every chunk.
+function paintShelfRow(rel) {
+    if (state.currentView.kind !== 'shelf') return;
+    for (const row of document.querySelectorAll('.shelf-row')) {
+        if (row.dataset.shelf !== rel) continue;
+        const btn = row.querySelector('.shelf-dl');
+        if (!btn) return;
+        const pct = state.shelf.busy.get(rel);
+        if (pct === undefined) return;
+        btn.className = 'shelf-dl working';
+        btn.removeAttribute('data-act');
+        btn.textContent = pct + '%';
+        return;
+    }
+}
+
+async function shelfDownload(rel) {
+    const t = state.shelf.tracks.find(x => x.id === rel);
+    if (!t || state.shelf.busy.has(rel)) return;
+    state.shelf.busy.set(rel, 0);
+    paintShelfRow(rel);
+    try {
+        const res = await fetch(shelfUrl(t.download));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const total = Number(res.headers.get('Content-Length')) || t.bytes || 0;
+        const type = res.headers.get('Content-Type') || 'audio/mpeg';
+        let blob;
+        if (res.body && total) {
+            const reader = res.body.getReader();
+            const chunks = [];
+            let got = 0, shown = 0;
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                got += value.length;
+                const pct = Math.min(99, Math.round(got / total * 100));
+                if (pct !== shown) { shown = pct; state.shelf.busy.set(rel, pct); paintShelfRow(rel); }
+            }
+            blob = new Blob(chunks, { type });
+        } else {
+            blob = await res.blob();
+        }
+        const file = new File([blob], t.file, { type: blob.type || type });
+        state.shelf.busy.delete(rel);
+        await importFiles([file], { shelfId: rel });
+    } catch (err) {
+        console.error('Shelf download failed', err);
+        state.shelf.busy.delete(rel);
+        toast(/quota/i.test(String(err)) ? 'No room left on this device' : 'Download failed — is the mini awake?');
+    } finally {
+        state.shelf.busy.delete(rel);
+        render();
+    }
+}
+
+async function shelfRemove(rel) {
+    const ids = state.tracks.filter(t => t.shelfId === rel).map(t => t.id);
+    for (const id of ids) await deleteTrack(id);
+    toast('Removed from this device — still on the shelf');
+    render();
+}
 
 // ============================================================
 // PLAYBACK
@@ -3318,12 +3752,17 @@ async function shufflePlay(trackIds) {
 async function playCurrent() {
     if (state.queueIdx < 0 || state.queueIdx >= state.queue.length) return;
     const id = state.queue[state.queueIdx];
-    const track = state.tracks.find(t => t.id === id);
+    const track = findTrack(id);
     if (!track) return;
     state.currentTrack = track;
-    if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
-    currentObjectURL = URL.createObjectURL(playableBlob(track));
-    audio.src = currentObjectURL;
+    if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+    if (track.remote) {
+        // Streamed straight off the mini — no copy is kept on this device.
+        audio.src = shelfUrl(track.remote.url);
+    } else {
+        currentObjectURL = URL.createObjectURL(playableBlob(track));
+        audio.src = currentObjectURL;
+    }
     audio.playbackRate = state.settings.speed;
     audio.volume = state.settings.volume;
 
@@ -3339,7 +3778,7 @@ async function playCurrent() {
     // Update UI first so the user sees what's loading even if play() is delayed/blocked
     updateTrackInfo();
     if ('mediaSession' in navigator) updateMediaSession(track);
-    document.querySelectorAll('.track-row').forEach(r => r.classList.toggle('playing', r.dataset.id === track.id));
+    document.querySelectorAll('.track-row, .shelf-row').forEach(r => r.classList.toggle('playing', r.dataset.id === track.id));
     try {
         await audio.play(); // 'play' event listener will sync isPlaying + icons
     } catch (e) {
@@ -3426,7 +3865,7 @@ async function playChapter(trackId, chapterIdx) {
         state.queueIdx = 0;
         await playCurrent();
     }
-    const track = state.tracks.find(t => t.id === trackId);
+    const track = findTrack(trackId);
     const ch = track?.chapters?.[chapterIdx];
     if (!ch) return;
     // Wait for metadata if seeking right after load
@@ -3930,6 +4369,7 @@ function openDetail(kind, id) {
 function navTo(view) {
     pushHistory();
     state.currentView = { kind: view };
+    if (view === 'shelf') loadShelf();
     render();
     $('main').scrollTo({ top: 0 });
     closeSidebar();
