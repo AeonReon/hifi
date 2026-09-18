@@ -2104,7 +2104,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v25';
+const BUILD = 'v26';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -5337,6 +5337,10 @@ audio.addEventListener('error', () => {
     const err = audio.error;
     if (!err) return;
     const t = state.currentTrack;
+    // A download from the Shelf that won't play: tell the mini exactly what
+    // happened, and play the same book from the mini at the same spot so
+    // you're never left with silence.
+    if (t && t.shelfId && !t.remote && (err.code === 3 || err.code === 4) && reportAndFallBack(t, err)) return;
     const ext = t && t.file ? (((t.file.name || '').match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase() : '';
     const fmtLabel = ext ? ext.toUpperCase() : 'this file';
     const reasons = {
@@ -5348,6 +5352,32 @@ audio.addEventListener('error', () => {
     toast(reasons[err.code] || 'Playback error');
     console.error('audio error', err.code, err.message);
 });
+
+function reportAndFallBack(t, err) {
+    const s = shelfTrack(t.shelfId);
+    const saved = state.positions.get(albumKey(t));
+    const at = saved && saved.trackId === t.id ? saved.position : 0;
+    if (state.shelf.token) {
+        fetch(shelfUrl('/report'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+            build: BUILD, ua: navigator.userAgent, rel: t.shelfId, copy: t.shelfCopy || 'full',
+            code: err.code, message: err.message || '', fileName: t.file && t.file.name, fileType: t.file && t.file.type,
+            fileSize: t.file && t.file.size, expected: s ? (t.shelfCopy === 'phone' && s.phone ? s.phone.bytes : t.shelfCopy === 'boost' && s.boost ? s.boost.bytes : s.bytes) : null,
+            canMp4: audio.canPlayType('audio/mp4'), standalone: !!navigator.standalone,
+        }) }).catch(() => {});
+    }
+    if (!s || t._fellBack) return false;
+    t._fellBack = true;
+    const o = shelfObj(s);
+    state.queue = state.queue.map(i => i === t.id ? o.id : i);
+    playCurrent().then(() => {
+        if (at > 5) {
+            const seek = () => { audio.currentTime = at; };
+            if (audio.readyState >= 1) seek(); else audio.addEventListener('loadedmetadata', seek, { once: true });
+        }
+    });
+    toast("This download won't play on this phone — playing it from the mini instead");
+    return true;
+}
 
 audio.addEventListener('timeupdate', () => {
     const cur = audio.currentTime || 0;
