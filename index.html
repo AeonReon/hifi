@@ -1687,6 +1687,41 @@
         }
         .shelf-row:hover { background: var(--surface-2); }
         .shelf-row.playing .shelf-name { color: var(--accent); }
+        .shelf-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        /* The at-a-glance "it's on the phone" mark, like VidQ's. */
+        .shelf-tick {
+            flex: none; width: 22px; height: 22px; border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: 12px; font-weight: 800; color: var(--surface);
+            border: 1.5px dashed var(--line);
+        }
+        .shelf-row.have .shelf-tick {
+            border: none;
+            background: linear-gradient(135deg, var(--accent), var(--accent-blue));
+        }
+        .shelf-on { font-weight: 700; color: var(--accent-dim); }
+        /* A series: a little stack of cards, tapped open. */
+        .shelf-stack { flex: none; position: relative; width: 22px; height: 24px; }
+        .shelf-stack i {
+            position: absolute; width: 17px; height: 19px; border-radius: 4px;
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+        }
+        .shelf-stack i:nth-child(1) { left: 5px; top: 0; opacity: 0.45; }
+        .shelf-stack i:nth-child(2) { left: 2.5px; top: 2.5px; opacity: 0.75; }
+        .shelf-stack i:nth-child(3) { left: 0; top: 5px; }
+        .shelf-row.have .shelf-stack i:nth-child(3) {
+            background: linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+        }
+        .shelf-group .shelf-name { font-weight: 700; }
+        .shelf-chev { font-size: 22px; color: var(--text-dim); padding: 0 6px; }
+        .shelf-back {
+            font-size: 13px; font-weight: 700; color: var(--accent-dim);
+            padding: 4px 0; margin-bottom: 4px;
+        }
+        .shelf-dl.resume { color: var(--accent-dim); }
         .shelf-row.playing .shelf-name::before { content: "▶ "; }
         .shelf-name { font-size: 14px; font-weight: 500; color: var(--text); }
         .shelf-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
@@ -1708,7 +1743,7 @@
         }
         .shelf-dl:active { transform: scale(0.96); }
         .shelf-dl.have {
-            color: var(--accent-dim);
+            color: var(--ink-deep);
             background:
                 linear-gradient(var(--accent-glow), var(--accent-glow)) padding-box,
                 linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
@@ -1991,7 +2026,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v22';
+const BUILD = 'v23';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -2038,7 +2073,7 @@ async function checkForNewBuild(initial) {
 // INDEXEDDB LAYER
 // ============================================================
 const DB_NAME = 'hifi';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let _db = null;
 
 function openDB() {
@@ -2055,8 +2090,15 @@ function openDB() {
             }
             if (!db.objectStoreNames.contains('playlists')) db.createObjectStore('playlists', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+            // Shelf downloads land here piece by piece until the file is whole.
+            if (!db.objectStoreNames.contains('parts')) db.createObjectStore('parts', { keyPath: 'key' });
         };
-        req.onsuccess = () => { _db = req.result; resolve(_db); };
+        req.onsuccess = () => {
+            _db = req.result;
+            // Let a newer copy of Hifi in another tab upgrade the database.
+            _db.onversionchange = () => { _db.close(); _db = null; };
+            resolve(_db);
+        };
     });
 }
 
@@ -2130,7 +2172,13 @@ const state = {
         loading: false,
         loaded: false,
         error: null,
-        busy: new Map(),       // shelf id -> download percent
+        busy: new Map(),       // shelf id -> download percent (the one running now)
+        queue: [],             // shelf ids waiting their turn — one download at a time
+        active: null,          // the shelf id downloading right now
+        stop: false,           // set to pause the active download
+        partial: new Map(),    // shelf id -> percent saved, for a download that was cut off
+        cutOff: new Set(),     // stopped because the line went dead — retried on return
+        group: null,           // the series open right now, or null for the whole shelf
         sorting: false,        // the mini is emptying the New inbox
     },
 };
@@ -2856,6 +2904,7 @@ async function loadAll() {
     if (settings?.value) Object.assign(state.settings, settings.value);
     await loadShelfAuth();
     if (state.shelf.token) loadShelf().catch(() => {});
+    refreshPartials().catch(() => {});
     // Backfill chapters for tracks imported before chapter parsing existed
     backfillChapters().catch(() => {});
     audio.volume = state.settings.volume;
@@ -3498,6 +3547,7 @@ async function loadShelf(force) {
         state.shelf.tracks = data.tracks || [];
         state.shelf.tracks.forEach(shelfObj);
         state.shelf.loaded = true;
+        if (!state.shelf.resumedOnce) { state.shelf.resumedOnce = true; resumeCutOffDownloads().catch(() => {}); }
     } catch (err) {
         console.warn('Shelf load failed', err);
         state.shelf.error = /Failed to fetch|NetworkError|Load failed/i.test(String(err && err.message))
@@ -3561,9 +3611,90 @@ function fmtSize(bytes) {
 
 function shelfVisible() {
     const q = (state.searchQuery || '').toLowerCase();
+    const sec = state.shelf.section;
+    const owned = sec === 'Downloaded' ? ownedShelfIds() : null;
     return state.shelf.tracks.filter(t =>
-        (state.shelf.section === 'All' || t.genre === state.shelf.section) &&
-        (!q || (t.title || '').toLowerCase().includes(q) || (t.genre || '').toLowerCase().includes(q)));
+        (sec === 'All' || (owned ? owned.has(t.id) : t.genre === sec)) &&
+        (!q || (t.title || '').toLowerCase().includes(q) || (t.genre || '').toLowerCase().includes(q)
+            || (shelfSeries(t) || '').toLowerCase().includes(q)));
+}
+
+// Which series a shelf file belongs to. A folder inside a section is one
+// (HORMOZI 100M, a folder of meditations). Loose files numbered the same way —
+// "Kolbrin Bible Book 01 - …", "… Part 3" — are one too, once there are two of
+// them. Nothing is moved on the mini; this is only how the list is drawn.
+const SERIES_WORD = /^(.*?[^\s\-_:,(])[\s\-_:,(]*\b(?:book|part|chapter|ch|vol|volume|episode|ep|disc|cd|lecture|session)\.?\s*\d+\b/i;
+let _seriesCache = { tracks: null, map: new Map() };
+function shelfSeriesMap() {
+    const tracks = state.shelf.tracks;
+    if (_seriesCache.tracks === tracks) return _seriesCache.map;
+    const map = new Map();
+    const loose = new Map();
+    for (const t of tracks) {
+        const parts = String(t.id).split('/');       // lib / section / [folders…] / file
+        if (parts.length > 3) { map.set(t.id, parts[2]); continue; }
+        const m = SERIES_WORD.exec(t.title || '');
+        if (!m) continue;
+        const k = t.genre + '|' + m[1].toLowerCase();
+        if (!loose.has(k)) loose.set(k, { name: m[1], ids: [] });
+        loose.get(k).ids.push(t.id);
+    }
+    for (const g of loose.values()) if (g.ids.length > 1) for (const id of g.ids) map.set(id, g.name);
+    _seriesCache = { tracks, map };
+    return map;
+}
+function shelfSeries(t) { return shelfSeriesMap().get(t.id) || null; }
+function seriesKey(t) { const n = shelfSeries(t); return n ? t.genre + '|' + n : null; }
+function numericCompare(a, b) { return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }); }
+
+function shelfTrackRow(t, owned) {
+    const sh = state.shelf;
+    const obj = shelfObj(t);
+    const have = owned.has(t.id);
+    const playing = state.currentTrack && state.currentTrack.id === obj.id;
+    const btn = shelfButtonHtml(t.id, have);
+    const bits = [sh.group ? '' : t.genre, fmtTime(t.seconds || 0), fmtSize(t.bytes)].filter(Boolean).join(' · ');
+    return `
+        <div class="shelf-row ${playing ? 'playing' : ''} ${have ? 'have' : ''}" data-id="${escapeHtml(obj.id)}" data-shelf="${escapeHtml(t.id)}">
+            <div class="shelf-main">
+                <span class="shelf-tick" aria-hidden="true">${have ? '✓' : ''}</span>
+                <div>
+                    <div class="shelf-name">${escapeHtml(t.title)}</div>
+                    <div class="shelf-sub">${escapeHtml(bits)}${have ? ' · <b class="shelf-on">on this device</b>' : ''}</div>
+                </div>
+            </div>
+            <div class="shelf-actions">${btn}<button class="shelf-menu" data-act="menu">⋯</button></div>
+        </div>`;
+}
+
+// One button, five states: downloading, waiting its turn, cut off part-way,
+// on the device, or not yet.
+function shelfButtonHtml(rel, have) {
+    const sh = state.shelf;
+    if (sh.active === rel) return `<button class="shelf-dl working" data-act="pause">${sh.busy.get(rel) || 0}% ✕</button>`;
+    if (sh.queue.includes(rel)) return `<button class="shelf-dl working" data-act="unqueue">Waiting ✕</button>`;
+    if (have) return `<button class="shelf-dl have" data-act="remove">✓ On device</button>`;
+    if (sh.partial.has(rel)) return `<button class="shelf-dl resume" data-act="download">⟳ Resume ${sh.partial.get(rel)}%</button>`;
+    return `<button class="shelf-dl" data-act="download">⤓ Download</button>`;
+}
+
+function shelfGroupRow(g, owned) {
+    const have = g.tracks.filter(t => owned.has(t.id)).length;
+    const secs = g.tracks.reduce((a, t) => a + (t.seconds || 0), 0);
+    const all = have === g.tracks.length;
+    const bits = [state.shelf.section === 'All' ? g.genre : '', `${g.tracks.length} parts`,
+        secs ? fmtTime(secs) : '', have ? (all ? '' : `${have} on this device`) : ''].filter(Boolean).join(' · ');
+    return `
+        <div class="shelf-row shelf-group ${all ? 'have' : ''}" data-group="${escapeHtml(g.key)}">
+            <div class="shelf-main">
+                <span class="shelf-stack" aria-hidden="true"><i></i><i></i><i></i></span>
+                <div>
+                    <div class="shelf-name">${escapeHtml(g.name)}</div>
+                    <div class="shelf-sub">${escapeHtml(bits)}${all ? ' · <b class="shelf-on">all on this device</b>' : ''}</div>
+                </div>
+            </div>
+            <div class="shelf-actions"><span class="shelf-chev">›</span></div>
+        </div>`;
 }
 
 function renderShelfView() {
@@ -3598,39 +3729,67 @@ function renderShelfView() {
             </div>`;
     }
     const owned = ownedShelfIds();
-    const list = shelfVisible();
     const newCount = sh.tracks.filter(t => t.genre === 'New').length;
-    // "New" is the inbox everything lands in, so it sits first — it is the one
-    // you actually want to look at.
-    const found = Array.from(new Set(sh.tracks.map(t => t.genre))).sort();
-    const sections = ['All', ...found.filter(g => g === 'New'), ...found.filter(g => g !== 'New')];
-    const chips = sections.map(g =>
-        `<button class="shelf-chip ${g === sh.section ? 'on' : ''}" data-section="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('');
-    const rows = list.map(t => {
-        const obj = shelfObj(t);
-        const have = owned.has(t.id);
-        const pct = sh.busy.get(t.id);
-        const playing = state.currentTrack && state.currentTrack.id === obj.id;
-        const btn = pct !== undefined
-            ? `<button class="shelf-dl working">${pct}%</button>`
-            : have
-                ? `<button class="shelf-dl have" data-act="remove">✓ Downloaded</button>`
-                : `<button class="shelf-dl" data-act="download">⤓ Download</button>`;
-        const bits = [t.genre, fmtTime(t.seconds || 0), fmtSize(t.bytes)].filter(Boolean).join(' · ');
+    const q = (state.searchQuery || '').trim();
+
+    // Inside one series: just its parts, in order, with a way back out.
+    if (sh.group) {
+        const members = sh.tracks.filter(t => seriesKey(t) === sh.group)
+            .filter(t => !q || (t.title || '').toLowerCase().includes(q.toLowerCase()))
+            .sort((a, b) => numericCompare(a.id, b.id));
+        const name = sh.group.split('|').slice(1).join('|');
+        const have = members.filter(t => owned.has(t.id)).length;
+        const left = members.filter(t => !owned.has(t.id)).length;
         return `
-            <div class="shelf-row ${playing ? 'playing' : ''}" data-id="${escapeHtml(obj.id)}" data-shelf="${escapeHtml(t.id)}">
+            <div class="view-header shelf-header">
                 <div>
-                    <div class="shelf-name">${escapeHtml(t.title)}</div>
-                    <div class="shelf-sub">${escapeHtml(bits)}</div>
+                    <button class="shelf-back" id="shelf-back-btn">‹ The Shelf</button>
+                    <div class="view-title">${escapeHtml(name)}</div>
+                    <div class="view-subtitle">${members.length} parts · ${have} on this device</div>
                 </div>
-                <div class="shelf-actions">${btn}<button class="shelf-menu" data-act="menu">⋯</button></div>
-            </div>`;
-    }).join('');
+                <div class="view-actions">
+                    ${left ? `<button class="btn-primary" id="shelf-getall-btn">Download ${left === members.length ? 'all' : 'the other ' + left}</button>` : ''}
+                    ${have ? `<button class="btn-ghost" id="shelf-dropall-btn">Remove from device</button>` : ''}
+                </div>
+            </div>
+            <div class="shelf-list">${members.map(t => shelfTrackRow(t, owned)).join('')}</div>`;
+    }
+
+    // "New" is the inbox everything lands in, so it sits first — it is the one
+    // you actually want to look at. "Downloaded" sits last, like VidQ.
+    const found = Array.from(new Set(sh.tracks.map(t => t.genre))).sort();
+    const sections = ['All', ...found.filter(g => g === 'New'), ...found.filter(g => g !== 'New'),
+        ...(owned.size ? ['Downloaded'] : [])];
+    if (!sections.includes(sh.section)) sh.section = 'All';
+    const chips = sections.map(g =>
+        `<button class="shelf-chip ${g === sh.section ? 'on' : ''}" data-section="${escapeHtml(g)}">${escapeHtml(g)}${
+            g === 'Downloaded' ? ' · ' + owned.size : ''}</button>`).join('');
+    const list = shelfVisible();
+
+    // A search shows every matching file; otherwise a series is one row.
+    let rows;
+    if (q) rows = list.map(t => shelfTrackRow(t, owned)).join('');
+    else {
+        const entries = [];
+        const groups = new Map();
+        for (const t of list) {
+            const k = seriesKey(t);
+            if (!k) { entries.push({ sortA: t.genre, sortB: t.title, html: () => shelfTrackRow(t, owned) }); continue; }
+            if (!groups.has(k)) {
+                const g = { key: k, name: shelfSeries(t), genre: t.genre, tracks: [] };
+                groups.set(k, g);
+                entries.push({ sortA: t.genre, sortB: g.name, html: () => shelfGroupRow(g, owned) });
+            }
+            groups.get(k).tracks.push(t);
+        }
+        entries.sort((a, b) => a.sortA.localeCompare(b.sortA) || numericCompare(a.sortB, b.sortB));
+        rows = entries.map(e => e.html()).join('');
+    }
     return `
         <div class="view-header shelf-header">
             <div>
                 <div class="view-title">The Shelf</div>
-                <div class="view-subtitle">${sh.tracks.length} on the mini · ${owned.size} downloaded here</div>
+                <div class="view-subtitle">${sh.tracks.length} on the mini · ${owned.size} on this device</div>
             </div>
             <div class="view-actions">
                 ${newCount ? `<button class="btn-primary" id="shelf-sort-btn">${sh.sorting
@@ -3642,7 +3801,7 @@ function renderShelfView() {
         ${list.length ? `<div class="shelf-list">${rows}</div>`
             : `<div class="empty"><div class="empty-icon">⌕</div><div class="empty-text">Nothing here matches.</div></div>`}
         <div class="shelf-note" style="text-align:center;margin-top:24px">
-            Tap a row to play it straight from the mini. Download to keep it in this player — remove it any time and it stays on the shelf. The ⋯ menu can save a copy to Files instead.
+            Tap a row to play it straight from the mini. Download to keep it in this player — remove it any time and it stays on the shelf. Big files come down in pieces, so a dropped signal or a locked screen just pauses them; they carry on where they stopped. The ⋯ menu can save a copy to Files instead.
             <br><a href="#" id="shelf-forget" style="color:var(--text-faint)">Disconnect this device</a>
         </div>`;
 }
@@ -3659,10 +3818,31 @@ function bindShelfView() {
     $('shelf-refresh-btn')?.addEventListener('click', () => loadShelf(true));
     $('shelf-forget')?.addEventListener('click', (e) => { e.preventDefault(); shelfForget(); });
     document.querySelectorAll('.shelf-chip').forEach(c => {
-        c.addEventListener('click', () => { state.shelf.section = c.dataset.section; render(); });
+        c.addEventListener('click', () => { state.shelf.section = c.dataset.section; state.shelf.group = null; render(); });
     });
     $('shelf-sort-btn')?.addEventListener('click', sortShelf);
-    document.querySelectorAll('.shelf-row').forEach(row => {
+    $('shelf-back-btn')?.addEventListener('click', () => { state.shelf.group = null; render(); });
+    const groupMembers = () => state.shelf.tracks.filter(t => seriesKey(t) === state.shelf.group)
+        .sort((a, b) => numericCompare(a.id, b.id));
+    $('shelf-getall-btn')?.addEventListener('click', () => {
+        const owned = ownedShelfIds();
+        groupMembers().filter(t => !owned.has(t.id)).forEach(t => shelfDownload(t.id));
+    });
+    $('shelf-dropall-btn')?.addEventListener('click', async () => {
+        const owned = groupMembers().filter(t => ownedShelfIds().has(t.id));
+        if (!confirm(`Remove ${owned.length} from this device? They stay on the shelf.`)) return;
+        for (const t of owned) await shelfRemove(t.id, true);
+        toast(`Removed ${owned.length} — still on the shelf`);
+        render();
+    });
+    document.querySelectorAll('.shelf-group').forEach(row => {
+        row.addEventListener('click', () => {
+            state.shelf.group = row.dataset.group;
+            render();
+            $('main')?.scrollTo({ top: 0 });
+        });
+    });
+    document.querySelectorAll('.shelf-row[data-shelf]').forEach(row => {
         const rel0 = row.dataset.shelf;
         attachLongPress(row, (e) => showShelfMenu(e, rel0));
         row.addEventListener('contextmenu', (e) => { e.preventDefault(); showShelfMenu(e, rel0); });
@@ -3673,71 +3853,242 @@ function bindShelfView() {
                 e.stopPropagation();
                 if (btn.dataset.act === 'download') shelfDownload(rel);
                 else if (btn.dataset.act === 'remove') shelfRemove(rel);
+                else if (btn.dataset.act === 'pause') shelfPause(rel);
+                else if (btn.dataset.act === 'unqueue') shelfUnqueue(rel);
                 else if (btn.dataset.act === 'menu') showShelfMenu(e, rel);
                 return;
             }
-            const ids = Array.from(document.querySelectorAll('.shelf-row')).map(r => r.dataset.id);
+            const ids = Array.from(document.querySelectorAll('.shelf-row[data-id]')).map(r => r.dataset.id);
             playList(ids, ids.indexOf(row.dataset.id));
         });
     });
 }
 
-// Update one row's button mid-download, so a 120 MB pull doesn't re-render
-// (and re-scroll) the whole list on every chunk.
+// Update one row's button mid-download, so a 800 MB pull doesn't re-render
+// (and re-scroll) the whole list on every piece.
 function paintShelfRow(rel) {
     if (state.currentView.kind !== 'shelf') return;
-    for (const row of document.querySelectorAll('.shelf-row')) {
+    for (const row of document.querySelectorAll('.shelf-row[data-shelf]')) {
         if (row.dataset.shelf !== rel) continue;
         const btn = row.querySelector('.shelf-dl');
         if (!btn) return;
         const pct = state.shelf.busy.get(rel);
         if (pct === undefined) return;
         btn.className = 'shelf-dl working';
-        btn.removeAttribute('data-act');
-        btn.textContent = pct + '%';
+        btn.dataset.act = 'pause';
+        btn.textContent = pct + '% ✕';
         return;
     }
 }
 
-async function shelfDownload(rel) {
-    const t = state.shelf.tracks.find(x => x.id === rel);
-    if (!t || state.shelf.busy.has(rel)) return;
-    state.shelf.busy.set(rel, 0);
-    paintShelfRow(rel);
+// ---- Downloading, in pieces ----
+// The old way pulled the whole file in one go and held it in memory until the
+// end. An 800 MB audiobook (Aristotle's Politics) is more than iOS lets a tab
+// hold, so the tab died around 30–40%, and any blip on the line lost the lot.
+// Now each 4 MB piece is asked for on its own, written straight to IndexedDB
+// (which keeps blobs on disk, not in memory), and asked for again if it
+// drops. A download cut off by a crash, a locked screen or a lost signal keeps
+// its pieces and carries on from the last one. One download runs at a time;
+// the rest wait their turn rather than fighting over the tunnel.
+const PIECE = 4 * 1048576;
+const dlKey = (rel) => 'dl|' + rel;
+const partKey = (rel, i) => 'part|' + rel + '|' + String(i).padStart(6, '0');
+const partRange = (rel) => IDBKeyRange.bound('part|' + rel + '|', 'part|' + rel + '|\uffff');
+const sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function partsGetAll(range) {
+    const db = await openDB();
+    return new Promise((res, rej) => {
+        const req = db.transaction('parts', 'readonly').objectStore('parts').getAll(range);
+        req.onsuccess = () => res(req.result || []);
+        req.onerror = () => rej(req.error);
+    });
+}
+// A piece and the note of how far we've got go in one transaction, so a crash
+// can never leave them disagreeing.
+async function partsPut(values) {
+    const db = await openDB();
+    return new Promise((res, rej) => {
+        const tx = db.transaction('parts', 'readwrite');
+        for (const v of values) tx.objectStore('parts').put(v);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+        tx.onabort = () => rej(tx.error || new Error('aborted'));
+    });
+}
+async function partsClear(rel) {
+    const db = await openDB();
+    return new Promise((res, rej) => {
+        const tx = db.transaction('parts', 'readwrite');
+        tx.objectStore('parts').delete(partRange(rel));
+        tx.objectStore('parts').delete(dlKey(rel));
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+    });
+}
+
+// Keep the screen awake while something is coming down — iOS pauses a page
+// the moment the phone locks. (If it locks anyway, we just carry on after.)
+let wakeLock = null;
+async function holdWake() {
     try {
-        const res = await fetch(shelfUrl(t.download));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const total = Number(res.headers.get('Content-Length')) || t.bytes || 0;
-        const type = res.headers.get('Content-Type') || 'audio/mpeg';
-        let blob;
-        if (res.body && total) {
-            const reader = res.body.getReader();
-            const chunks = [];
-            let got = 0, shown = 0;
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                got += value.length;
-                const pct = Math.min(99, Math.round(got / total * 100));
-                if (pct !== shown) { shown = pct; state.shelf.busy.set(rel, pct); paintShelfRow(rel); }
-            }
-            blob = new Blob(chunks, { type });
-        } else {
-            blob = await res.blob();
+        if (!wakeLock && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
         }
-        const file = new File([blob], t.file, { type: blob.type || type });
-        state.shelf.busy.delete(rel);
-        await importFiles([file], { shelfId: rel });
+    } catch { wakeLock = null; }
+}
+function dropWake() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
+
+function shelfDownload(rel) {
+    const sh = state.shelf;
+    if (sh.active === rel || sh.queue.includes(rel) || ownedShelfIds().has(rel)) return;
+    if (!sh.tracks.some(x => x.id === rel)) return;
+    sh.queue.push(rel);
+    if (sh.active) render();
+    pumpDownloads();
+}
+
+function shelfPause(rel) {
+    if (state.shelf.active === rel) state.shelf.stop = true;
+}
+function shelfUnqueue(rel) {
+    state.shelf.queue = state.shelf.queue.filter(x => x !== rel);
+    render();
+}
+
+async function pumpDownloads() {
+    const sh = state.shelf;
+    if (sh.active) return;
+    const rel = sh.queue.shift();
+    if (!rel) { dropWake(); return; }
+    sh.active = rel;
+    sh.stop = false;
+    sh.busy.set(rel, sh.partial.get(rel) || 0);
+    render();
+    holdWake();
+    const t = sh.tracks.find(x => x.id === rel);
+    try {
+        await runDownload(t);
+        sh.partial.delete(rel);
+        if (!sh.queue.length) toast('Downloaded: ' + t.title);
     } catch (err) {
-        console.error('Shelf download failed', err);
-        state.shelf.busy.delete(rel);
-        toast(/quota/i.test(String(err)) ? 'No room left on this device' : 'Download failed — is the mini awake?');
+        if (err && err.paused) toast('Paused — tap Resume to carry on');
+        else if (/quota/i.test(String(err && (err.name + err.message)))) {
+            toast('No room left on this device');
+            sh.queue = [];
+        } else if (err && err.locked) {
+            toast('The mini wants the PIN again');
+            sh.queue = [];
+        } else {
+            console.error('Shelf download failed', err);
+            toast('The mini stopped answering — it will carry on when it can');
+            sh.cutOff.add(rel);
+        }
     } finally {
-        state.shelf.busy.delete(rel);
+        sh.active = null;
+        sh.busy.delete(rel);
+        await refreshPartials();
         render();
+        pumpDownloads();
     }
 }
+
+async function fetchPiece(url, start, end) {
+    let wait = 1000;
+    for (let attempt = 0; ; attempt++) {
+        if (state.shelf.stop) throw Object.assign(new Error('paused'), { paused: true });
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 60000);
+        try {
+            const res = await fetch(url, { headers: { Range: `bytes=${start}-${end}` }, cache: 'no-store', signal: ctl.signal });
+            if (res.status === 401 || res.status === 403) throw Object.assign(new Error('locked'), { locked: true });
+            if (res.status !== 206 && !(res.status === 200 && start === 0)) throw new Error('HTTP ' + res.status);
+            let blob = await res.blob();
+            // A server that ignores Range sends the whole file — keep only our slice.
+            if (res.status === 200) blob = blob.slice(0, end - start + 1);
+            if (blob.size !== end - start + 1) throw new Error(`short piece ${blob.size}/${end - start + 1}`);
+            return blob;
+        } catch (err) {
+            if (err.locked || attempt >= 8) throw err;
+            // Waiting out a locked screen: don't burn retries while hidden.
+            while (document.visibilityState === 'hidden' && !state.shelf.stop) await sleepMs(1000);
+            await sleepMs(wait);
+            wait = Math.min(wait * 2, 15000);
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+}
+
+async function runDownload(t) {
+    const rel = t.id;
+    const size = t.bytes;
+    if (!size) throw new Error('no size in the catalog');
+    const url = shelfUrl(t.download);
+    const pieces = Math.ceil(size / PIECE);
+    let m = await dbGet('parts', dlKey(rel));
+    if (!m || m.size !== size) {                       // new, or the file changed on the mini
+        await partsClear(rel);
+        m = { key: dlKey(rel), rel, size, done: 0, tries: 0 };
+    }
+    m.tries = (m.tries || 0) + 1;
+    await partsPut([m]);
+    for (let i = m.done; i < pieces; i++) {
+        const start = i * PIECE;
+        const end = Math.min(size, start + PIECE) - 1;
+        const blob = await fetchPiece(url, start, end);
+        m.done = i + 1;
+        await partsPut([{ key: partKey(rel, i), blob }, { ...m }]);
+        const pct = Math.min(99, Math.floor(m.done / pieces * 100));
+        if (pct !== state.shelf.busy.get(rel)) { state.shelf.busy.set(rel, pct); paintShelfRow(rel); }
+        if (state.shelf.stop) throw Object.assign(new Error('paused'), { paused: true });
+    }
+    // Stitch the pieces into one file. Blobs read back out of IndexedDB are
+    // references to disk, so this doesn't pull 800 MB into memory either.
+    const blobs = (await partsGetAll(partRange(rel))).map(r => r.blob);
+    const total = blobs.reduce((a, b) => a + b.size, 0);
+    if (blobs.length !== pieces || total !== size) {
+        await partsClear(rel);
+        throw new Error(`pieces don't add up (${total}/${size}) — starting that one again`);
+    }
+    const ext = (t.file.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+    const type = { mp3: 'audio/mpeg', m4a: 'audio/mp4', m4b: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg',
+        opus: 'audio/ogg', wav: 'audio/wav', flac: 'audio/flac' }[ext.toLowerCase()] || 'audio/mpeg';
+    const file = new File(blobs, t.file, { type });
+    await importFiles([file], { shelfId: rel });
+    if (!ownedShelfIds().has(rel)) throw new Error('import failed');
+    await partsClear(rel);
+}
+
+// Which downloads were cut off part-way, and how far each got.
+async function refreshPartials() {
+    try {
+        const notes = await partsGetAll(IDBKeyRange.bound('dl|', 'dl|\uffff'));
+        state.shelf.partial = new Map(notes.map(n =>
+            [n.rel, Math.min(99, Math.floor(n.done / Math.ceil(n.size / PIECE) * 100))]));
+        return notes;
+    } catch { return []; }
+}
+
+// On opening Hifi, a download that was cut off carries on by itself — unless
+// it has already failed a few times, which means something is properly wrong
+// and it should wait for a tap rather than loop.
+async function resumeCutOffDownloads() {
+    const notes = await refreshPartials();
+    for (const n of notes) if ((n.tries || 0) < 4) shelfDownload(n.rel);
+}
+
+// Coming back to the app, or getting signal back, restarts anything that
+// stopped because the line went dead.
+function retryCutOff() {
+    const sh = state.shelf;
+    if (sh.active) { holdWake(); return; }
+    for (const rel of sh.cutOff) shelfDownload(rel);
+    sh.cutOff.clear();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retryCutOff(); });
+window.addEventListener('online', retryCutOff);
 
 function showShelfMenu(e, rel) {
     if (e.preventDefault) e.preventDefault();
@@ -3750,7 +4101,10 @@ function showShelfMenu(e, rel) {
         { label: 'Play from the mini', action: () => playList([obj.id], 0) },
         { divider: true },
         have ? { label: 'Remove the download', action: () => shelfRemove(rel), danger: true }
-             : { label: 'Download into Hifi', action: () => shelfDownload(rel) },
+             : { label: state.shelf.partial.has(rel) ? 'Carry on downloading' : 'Download into Hifi', action: () => shelfDownload(rel) },
+        ...(state.shelf.partial.has(rel) && state.shelf.active !== rel
+            ? [{ label: 'Throw away the part-download', danger: true, action: async () => {
+                  await partsClear(rel); await refreshPartials(); render(); } }] : []),
         { label: 'Save a copy to Files', action: () => shelfSaveToFiles(rel) },
     ]);
 }
@@ -3817,9 +4171,10 @@ async function sortShelf() {
     }
 }
 
-async function shelfRemove(rel) {
+async function shelfRemove(rel, quiet) {
     const ids = state.tracks.filter(t => t.shelfId === rel).map(t => t.id);
     for (const id of ids) await deleteTrack(id);
+    if (quiet) return;
     toast('Removed from this device — still on the shelf');
     render();
 }
