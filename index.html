@@ -2026,7 +2026,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v23';
+const BUILD = 'v24';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -3826,7 +3826,7 @@ function bindShelfView() {
         .sort((a, b) => numericCompare(a.id, b.id));
     $('shelf-getall-btn')?.addEventListener('click', () => {
         const owned = ownedShelfIds();
-        groupMembers().filter(t => !owned.has(t.id)).forEach(t => shelfDownload(t.id));
+        shelfAskDownload(groupMembers().filter(t => !owned.has(t.id)).map(t => t.id));
     });
     $('shelf-dropall-btn')?.addEventListener('click', async () => {
         const owned = groupMembers().filter(t => ownedShelfIds().has(t.id));
@@ -3851,7 +3851,7 @@ function bindShelfView() {
             const rel = row.dataset.shelf;
             if (btn) {
                 e.stopPropagation();
-                if (btn.dataset.act === 'download') shelfDownload(rel);
+                if (btn.dataset.act === 'download') shelfAskDownload([rel]);
                 else if (btn.dataset.act === 'remove') shelfRemove(rel);
                 else if (btn.dataset.act === 'pause') shelfPause(rel);
                 else if (btn.dataset.act === 'unqueue') shelfUnqueue(rel);
@@ -3940,6 +3940,53 @@ async function holdWake() {
 }
 function dropWake() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
 
+// ---- Mobile data guard ----
+// Android tells a web app whether it is on Wi-Fi or mobile data; iPhone never
+// does (Safari has no way to ask). So: on known Wi-Fi, just go. On known
+// mobile data, ask before anything over 20 MB. Where we can't tell (every
+// iPhone), ask before anything over 150 MB — so a mis-tap on an 800 MB
+// audiobook can never quietly eat the allowance.
+const BIG_UNKNOWN = 150 * 1048576;
+const BIG_MOBILE = 20 * 1048576;
+function netKind() {
+    const t = navigator.connection && navigator.connection.type;
+    if (t === 'wifi' || t === 'ethernet') return 'wifi';
+    if (t === 'cellular') return 'mobile';
+    return 'unknown';
+}
+function okToDownload(bytes, what) {
+    const k = netKind();
+    if (k === 'wifi') return true;
+    if (k === 'mobile' && bytes < BIG_MOBILE) return true;
+    if (k === 'unknown' && bytes < BIG_UNKNOWN) return true;
+    return confirm(k === 'mobile'
+        ? `You're on mobile data.\n\n${what} ${/^These /.test(what) ? 'come to' : 'is'} ${fmtSize(bytes)}. Download it anyway?`
+        : `${what} ${/^These /.test(what) ? 'come to' : 'is'} ${fmtSize(bytes)}.\n\nIf you're on mobile data rather than Wi-Fi, that all comes out of your allowance. Download it now?`);
+}
+// What a tap on Download goes through. Carrying on by itself after a cut-off
+// does not ask again — you already said yes.
+function shelfAskDownload(rels) {
+    const owned = ownedShelfIds();
+    const todo = rels.filter(r => !owned.has(r) && state.shelf.active !== r && !state.shelf.queue.includes(r));
+    if (!todo.length) return;
+    const bytes = todo.reduce((a, r) => {
+        const t = state.shelf.tracks.find(x => x.id === r);
+        // A part-download only needs what is left.
+        return a + (t ? t.bytes * (1 - (state.shelf.partial.get(r) || 0) / 100) : 0);
+    }, 0);
+    const first = state.shelf.tracks.find(x => x.id === todo[0]);
+    const what = todo.length > 1 ? `These ${todo.length}` : `"${first ? first.title : 'This'}"`;
+    if (!okToDownload(bytes, what)) return;
+    todo.forEach(shelfDownload);
+}
+// Android only: walking out of Wi-Fi mid-download pauses it rather than
+// carrying on over mobile data. Resume asks first.
+navigator.connection?.addEventListener?.('change', () => {
+    if (netKind() !== 'mobile' || !state.shelf.active) return;
+    state.shelf.queue = [];
+    state.shelf.stop = true;
+});
+
 function shelfDownload(rel) {
     const sh = state.shelf;
     if (sh.active === rel || sh.queue.includes(rel) || ownedShelfIds().has(rel)) return;
@@ -3973,7 +4020,9 @@ async function pumpDownloads() {
         sh.partial.delete(rel);
         if (!sh.queue.length) toast('Downloaded: ' + t.title);
     } catch (err) {
-        if (err && err.paused) toast('Paused — tap Resume to carry on');
+        if (err && err.paused) toast(netKind() === 'mobile'
+            ? "Paused — you're on mobile data now. Resume will ask first"
+            : 'Paused — tap Resume to carry on');
         else if (/quota/i.test(String(err && (err.name + err.message)))) {
             toast('No room left on this device');
             sh.queue = [];
@@ -4076,6 +4125,7 @@ async function refreshPartials() {
 // and it should wait for a tap rather than loop.
 async function resumeCutOffDownloads() {
     const notes = await refreshPartials();
+    if (netKind() === 'mobile') return;               // wait for Wi-Fi, or a tap
     for (const n of notes) if ((n.tries || 0) < 4) shelfDownload(n.rel);
 }
 
@@ -4084,6 +4134,7 @@ async function resumeCutOffDownloads() {
 function retryCutOff() {
     const sh = state.shelf;
     if (sh.active) { holdWake(); return; }
+    if (netKind() === 'mobile') return;
     for (const rel of sh.cutOff) shelfDownload(rel);
     sh.cutOff.clear();
 }
@@ -4101,7 +4152,7 @@ function showShelfMenu(e, rel) {
         { label: 'Play from the mini', action: () => playList([obj.id], 0) },
         { divider: true },
         have ? { label: 'Remove the download', action: () => shelfRemove(rel), danger: true }
-             : { label: state.shelf.partial.has(rel) ? 'Carry on downloading' : 'Download into Hifi', action: () => shelfDownload(rel) },
+             : { label: state.shelf.partial.has(rel) ? 'Carry on downloading' : 'Download into Hifi', action: () => shelfAskDownload([rel]) },
         ...(state.shelf.partial.has(rel) && state.shelf.active !== rel
             ? [{ label: 'Throw away the part-download', danger: true, action: async () => {
                   await partsClear(rel); await refreshPartials(); render(); } }] : []),
