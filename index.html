@@ -1786,6 +1786,78 @@
             .shelf-dl { min-width: 76px; }
         }
 
+        /* ===== BOOK PROGRESS: continue listening + finished ticks ===== */
+        .book-bar {
+            position: absolute; left: 8px; right: 8px; bottom: 8px; height: 5px;
+            border-radius: 999px; background: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); overflow: hidden; z-index: 1;
+        }
+        .book-bar i {
+            display: block; height: 100%; border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent), var(--accent-blue));
+        }
+        .album-card:has(.book-bar) .play-overlay { bottom: 20px; }
+        .done-tick {
+            position: absolute; top: 8px; left: 8px; z-index: 2;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: 14px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-blue));
+            border: 2px solid var(--surface);
+            box-shadow: 0 3px 10px rgba(31, 90, 142, 0.35);
+        }
+        .book-left { font-size: 12px; color: var(--accent-dim); font-weight: 700; }
+        .detail-progress { margin-top: 10px; max-width: 320px; }
+        .detail-progress .book-bar { position: static; height: 6px; background: var(--line); box-shadow: none; }
+        .detail-progress .book-left { display: block; margin-top: 6px; }
+        .pill-toggle {
+            padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+            color: var(--text-dim);
+            background:
+                linear-gradient(var(--surface), var(--surface)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .pill-toggle:active { transform: scale(0.94); }
+        .pill-toggle.on {
+            color: var(--ink-deep);
+            background:
+                linear-gradient(var(--accent-glow), var(--accent-glow)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+        }
+        .np-boost { font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 999px; }
+        .np-boost.active { color: var(--ink-deep); background: var(--accent-glow); }
+        .np-boost[disabled] { opacity: 0.4; }
+
+        /* ===== ON THIS DEVICE (storage) + putting things back ===== */
+        .dev-card {
+            margin: 0 0 16px; padding: 18px 20px; border-radius: 16px;
+            background:
+                linear-gradient(var(--card), var(--card)) padding-box,
+                linear-gradient(135deg, var(--accent), var(--accent-blue)) border-box;
+            border: 1.5px solid transparent;
+            box-shadow: var(--shadow-sm);
+        }
+        .dev-card h3 { font-size: 15px; font-weight: 800; margin: 0 0 4px; }
+        .dev-card p { font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.5; }
+        .dev-card .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+        .dev-meter { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
+        .dev-meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-blue)); }
+        .dev-ok { color: var(--accent-blue-deep); font-weight: 700; }
+        .dev-warn { color: var(--danger); font-weight: 700; }
+        .dev-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 18px; }
+        .dev-row {
+            display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+            padding: 11px 12px; border-radius: 10px;
+        }
+        .dev-row:hover { background: var(--surface-2); }
+        .dev-row .name { font-size: 14px; font-weight: 600; }
+        .dev-row .sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .dev-row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .dev-h { font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); margin: 22px 0 8px; }
+        .restore-card { margin-bottom: 20px; }
+
     </style>
 </head>
 <body>
@@ -1831,6 +1903,11 @@
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/><path d="M7 3v4"/><path d="M13 8v4"/><path d="M9 13v4"/></svg>
                 <span class="label">The Shelf</span>
                 <span class="count" id="shelf-count"></span>
+            </div>
+            <div class="nav-item" data-view="storage">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/><path d="M9 7h6M9 11h6"/></svg>
+                <span class="label">On this device</span>
+                <span class="count" id="storage-count"></span>
             </div>
         </div>
 
@@ -1972,6 +2049,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </button>
         <button class="speed-btn" id="np-speed" title="Playback speed">1×</button>
+        <button class="ctrl-btn np-boost" id="np-boost" title="Voice boost: a louder, clearer copy of this book">Voice</button>
         <button class="ctrl-btn" id="np-eq" title="Equalizer">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="4" x2="6" y2="14"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="12" y1="4" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="20"/><line x1="18" y1="4" x2="18" y2="16"/><line x1="18" y1="20" x2="18" y2="20.01"/><circle cx="6" cy="16" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="18" cy="18" r="2"/></svg>
         </button>
@@ -2026,7 +2104,7 @@
 // ============================================================
 // BUILD VERSION (bumped on every deploy)
 // ============================================================
-const BUILD = 'v24';
+const BUILD = 'v25';
 document.getElementById('build-pill').textContent = BUILD;
 
 // ============================================================
@@ -2160,6 +2238,15 @@ const state = {
     sleepTimer: null,
     sleepRemaining: 0,
     searchQuery: '',
+    // Books: where you are, which you've finished, and each one's own speed /
+    // voice boost. Keyed by albumKey, like everything else about a book.
+    positions: new Map(),      // album key -> { trackId, position, ts }
+    finished: new Set(),       // album keys
+    bookPrefs: new Map(),      // album key -> { speed, boost }
+    device: null,              // { id, name } — this device, for the backup on the mini
+    persisted: null,           // did the browser agree not to clear our storage?
+    lastBackup: 0,
+    pendingBooks: [],          // places to put back once a restored download lands
     // The Shelf: everything sitting on the mini. Browsed, streamed, or pulled
     // down into the library above. Nothing here counts as "in your library"
     // until you actually download it — the player stays tidy on purpose.
@@ -2180,6 +2267,11 @@ const state = {
         cutOff: new Set(),     // stopped because the line went dead — retried on return
         group: null,           // the series open right now, or null for the whole shelf
         sorting: false,        // the mini is emptying the New inbox
+        want: new Map(),       // shelf id -> which copy to fetch: 'phone' | 'boost' | 'full'
+        replacing: new Set(),  // shelf ids being swapped for another copy (already on the device)
+        waiting: new Map(),    // shelf id -> copy the mini is still making; downloads when ready
+        devices: [],           // what every device last told the mini it holds
+        restore: null,         // a device record worth offering to put back
     },
 };
 
@@ -2720,7 +2812,12 @@ function renderCategoryPicker(key) {
 // ============================================================
 // `extra` is merged into every track created by this import — the shelf uses it
 // to stamp `shelfId` so a downloaded track knows where it came from.
-async function importFiles(fileList, extra) {
+async function importFiles(fileList, extra0) {
+    // Shelf downloads pass a few hints that only apply when the file itself
+    // doesn't say: a book name for untagged YouTube mp3s, and the chapters the
+    // mini found. Everything else in `extra` is stamped straight on the track.
+    const { albumFallback, chaptersFallback, ...extra } = extra0 || {};
+    const created = [];
     const all = Array.from(fileList);
     const files = all.filter(isAudioFile);
     const lyricFiles = all.filter(isLyricsFile);
@@ -2764,7 +2861,8 @@ async function importFiles(fileList, extra) {
                 isMp4Family ? readMp4Chapters(file) : Promise.resolve(null),
             ]);
             const artworkBlob = tagPictureToBlob(tags.picture);
-            const isAudiobook = (tags.genre || '').toLowerCase().includes('audiobook')
+            const isAudiobook = extra.kind === 'audiobook'
+                || (tags.genre || '').toLowerCase().includes('audiobook')
                 || (file.name || '').toLowerCase().endsWith('.m4b')
                 || (chapters && chapters.length > 1);
             const canPlay = canBrowserPlay(file);
@@ -2777,7 +2875,7 @@ async function importFiles(fileList, extra) {
                 id: uid(),
                 title: tags.title || file.name.replace(/\.[^.]+$/, ''),
                 artist: tags.artist || 'Unknown Artist',
-                album: tags.album || 'Unknown Album',
+                album: tags.album || albumFallback || 'Unknown Album',
                 albumArtist: tags.albumArtist || tags.artist || 'Unknown Artist',
                 trackNum: parseInt(tags.track) || 0,
                 duration: duration,
@@ -2788,14 +2886,15 @@ async function importFiles(fileList, extra) {
                 kind: isAudiobook ? 'audiobook' : 'music',
                 file: file,
                 artwork: artworkBlob,
-                chapters: chapters || null,
+                chapters: chapters || (chaptersFallback && chaptersFallback.length > 1 ? chaptersFallback : null),
                 bookmarks: [],
                 lyrics: lyrics,
-                ...(extra || {}),
+                ...extra,
             };
 
             await dbPut('tracks', track);
             state.tracks.push(track);
+            created.push(track);
             if (isAudiobook) {
                 state.audiobookIds.add(albumKey(track));
                 state.categoryMap.set(albumKey(track), 'audiobook');
@@ -2811,11 +2910,13 @@ async function importFiles(fileList, extra) {
     refreshSidebarCounts();
     render();
     const lyricsNote = lyricsAttached ? ` · lyrics on ${lyricsAttached}` : '';
+    if (extra.shelfId) return created;          // the shelf says its own thing
     if (unsupported) {
         toast(`Added ${added}${lyricsNote} • ${unsupported} format${unsupported !== 1 ? 's' : ''} this browser cannot decode`);
     } else {
         toast(`Added ${added} track${added !== 1 ? 's' : ''}${lyricsNote}`);
     }
+    return created;
 }
 
 // Any id in a queue is either a local track or a shelf track.
@@ -2824,6 +2925,9 @@ function findTrack(id) {
 }
 
 function albumKey(track) {
+    // Something streamed off the shelf is its own "book", so where you got to
+    // in one talk is never mistaken for where you got to in another.
+    if (track.remote) return '__shelf__\t' + track.remote.id;
     // Unknown-album tracks each become their own pseudo-album so they get
     // unique cards/colours in the Albums view instead of all piling into one tile.
     if (isUnknownAlbum(track.album)) return '__solo__\t' + track.id;
@@ -2902,6 +3006,8 @@ async function loadAll() {
     if (cmDirty) saveCategoryMap();
     const settings = await dbGet('meta', 'settings');
     if (settings?.value) Object.assign(state.settings, settings.value);
+    await loadBooks();
+    await loadDevice();
     await loadShelfAuth();
     if (state.shelf.token) loadShelf().catch(() => {});
     refreshPartials().catch(() => {});
@@ -2950,6 +3056,85 @@ async function backfillChapters() {
         }
     }
     if (changed) render();
+}
+
+// ============================================================
+// BOOKS — where you are, what you've finished, per-book speed + voice
+// ============================================================
+async function loadBooks() {
+    const meta = await dbAll('meta');
+    state.positions = new Map();
+    for (const m of meta) {
+        if (m.key.startsWith('ab-pos-') && m.value && m.value.trackId) state.positions.set(m.key.slice(7), m.value);
+        else if (m.key === 'finished') state.finished = new Set(m.value || []);
+        else if (m.key === 'bookPrefs') state.bookPrefs = new Map(m.value || []);
+        else if (m.key === 'pendingBooks') state.pendingBooks = m.value || [];
+    }
+}
+const saveFinished = () => dbPut('meta', { key: 'finished', value: Array.from(state.finished) });
+const saveBookPrefs = () => dbPut('meta', { key: 'bookPrefs', value: Array.from(state.bookPrefs.entries()) });
+
+function savePosition(track, position) {
+    const k = albumKey(track);
+    const v = { trackId: track.id, position, ts: Date.now() };
+    state.positions.set(k, v);
+    dbPut('meta', { key: 'ab-pos-' + k, value: v });
+    if (track.shelfId) scheduleBackup();
+}
+function clearPosition(k) {
+    state.positions.delete(k);
+    dbDelete('meta', 'ab-pos-' + k).catch(() => {});
+}
+
+// How far through a book you are, across all its parts.
+function bookProgress(key) {
+    const album = getAlbum(key);
+    if (!album) return null;
+    const total = album.tracks.reduce((a, t) => a + (t.duration || 0), 0);
+    const p = state.positions.get(key);
+    const idx = p ? album.tracks.findIndex(t => t.id === p.trackId) : -1;
+    const done = idx < 0 ? 0
+        : album.tracks.slice(0, idx).reduce((a, t) => a + (t.duration || 0), 0) + (p.position || 0);
+    return { album, total, done, left: Math.max(0, total - done), frac: total ? Math.min(1, done / total) : 0, ts: p ? p.ts : 0 };
+}
+function fmtLeft(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+    if (h && m) return `${h}h ${m}m left`;
+    if (h) return `${h}h left`;
+    return `${Math.max(1, m)}m left`;
+}
+// Books you've started and not finished, the most recent first.
+function getContinueBooks() {
+    return getAudiobooks()
+        .filter(a => !state.finished.has(a.key))
+        .map(a => bookProgress(a.key))
+        .filter(p => p && p.done > 30 && p.left > 20)
+        .sort((a, b) => b.ts - a.ts);
+}
+async function setFinished(key, on, quiet) {
+    if (on) { state.finished.add(key); clearPosition(key); }
+    else state.finished.delete(key);
+    await saveFinished();
+    scheduleBackup();
+    if (!quiet) { toast(on ? 'Marked as finished ✓' : 'Marked as not finished'); render(); }
+}
+// Artwork overlays for a book card: a tick when finished, a bar while listening.
+function bookBadges(key) {
+    if (albumCategory(key) !== 'audiobook') return '';
+    if (state.finished.has(key)) return '<span class="done-tick" title="Finished">✓</span>';
+    const p = state.positions.has(key) ? bookProgress(key) : null;
+    return p && p.done > 30 ? `<span class="book-bar"><i style="width:${(p.frac * 100).toFixed(1)}%"></i></span>` : '';
+}
+
+// Speed and voice boost belong to the book: Politics at 1.4×, a poem at 1×.
+// Music keeps the one speed it always had. A book you haven't set yet starts
+// at whatever speed you last chose for a book.
+function prefsFor(track) { return track ? (state.bookPrefs.get(albumKey(track)) || {}) : {}; }
+function isSpokenTrack(t) { return !!t && (isAudiobookTrack(t) || (t.remote && t.remote.kind === 'spoken')); }
+function speedFor(track) {
+    if (!isSpokenTrack(track)) return state.settings.speed;
+    return prefsFor(track).speed || state.settings.bookSpeed || 1;
 }
 
 // ============================================================
@@ -3050,6 +3235,7 @@ function renderAlbumCard(album, kind) {
         <div class="album-card" data-album-key="${escapeHtml(album.key)}" data-album-kind="${detailKind}" onclick="openDetail('${detailKind}', ${jsArg(album.key)})">
             <div class="album-art">
                 ${albumArtHTML(album)}
+                ${bookBadges(album.key)}
                 ${renderPlayOverlay(album.key)}
             </div>
             <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
@@ -3150,6 +3336,7 @@ function viewLabel(view) {
     if (view.kind === 'audiobooks') return 'Audiobooks';
     if (view.kind === 'recents') return 'Recently Added';
     if (view.kind === 'shelf') return 'The Shelf';
+    if (view.kind === 'storage') return 'On this device';
     if (view.kind === 'album' || view.kind === 'audiobook') {
         const a = getAlbum(view.id);
         return a ? displayAlbumName(a) : 'Back';
@@ -3182,6 +3369,10 @@ function renderAlbumDetail(key, isAudiobook) {
     const itemLabel = isAudiobook ? 'chapter' : 'track';
     const category = albumCategory(key);
     const kindLabel = category === 'audiobook' ? 'Audiobook' : category === 'song' ? 'Songs' : 'Album';
+    const done = state.finished.has(key);
+    const prog = category === 'audiobook' && !done && state.positions.has(key) ? bookProgress(key) : null;
+    const going = prog && prog.done > 30;
+    const bookSpeed = category === 'audiobook' ? (state.bookPrefs.get(key) || {}).speed : null;
     return `
         ${renderDetailBackBar()}
         <div class="detail-hero">
@@ -3190,12 +3381,14 @@ function renderAlbumDetail(key, isAudiobook) {
                 <div class="detail-kind">${kindLabel}</div>
                 <div class="detail-name">${escapeHtml(displayAlbumName(album))}</div>
                 <div class="detail-author">${escapeHtml(album.artist)}</div>
-                <div class="detail-stats">${itemCount} ${itemLabel}${itemCount !== 1 ? 's' : ''} · ${fmtTime(totalSec)}</div>
+                <div class="detail-stats">${itemCount} ${itemLabel}${itemCount !== 1 ? 's' : ''} · ${fmtTime(totalSec)}${bookSpeed && bookSpeed !== 1 ? ` · plays at ${bookSpeed}×` : ''}</div>
+                ${going ? `<div class="detail-progress"><span class="book-bar"><i style="width:${(prog.frac * 100).toFixed(1)}%"></i></span><span class="book-left">${fmtLeft(prog.left)}</span></div>` : ''}
                 <div class="detail-actions">
-                    <button class="btn-play" onclick="playList(${jsArg(trackIds)})">
+                    <button class="btn-play" onclick="playAlbum(${jsArg(key)})">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        Play
+                        ${going ? 'Resume' : 'Play'}
                     </button>
+                    ${category === 'audiobook' ? `<button class="pill-toggle ${done ? 'on' : ''}" onclick="setFinished(${jsArg(key)}, ${!done})" title="${done ? 'Tap to mark as not finished' : 'Mark as finished'}">${done ? '✓ Finished' : 'Mark finished'}</button>` : ''}
                     ${singleWithChapters ? '' : `<button class="btn-icon" onclick="shufflePlay(${jsArg(trackIds)})" title="Shuffle">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
                     </button>`}
@@ -3279,8 +3472,11 @@ function render() {
     else if (v.kind === 'audiobook') c.innerHTML = renderAlbumDetail(v.id, true);
     else if (v.kind === 'playlist') c.innerHTML = renderPlaylistDetail(v.id);
     else if (v.kind === 'shelf') c.innerHTML = renderShelfView();
+    else if (v.kind === 'storage') c.innerHTML = renderStorageView();
 
     bindShelfView();
+    bindStorageView();
+    bindRestoreButtons();
     bindTrackRows();
     bindHomeCards();
     bindAlbumCards();
@@ -3335,7 +3531,18 @@ function handleAlbumPlayClick(key, btn) {
 }
 
 function renderHomeView() {
-    if (!state.tracks.length) return renderEmptyLibrary();
+    const restore = state.shelf.restore ? renderRestoreCard(state.shelf.restore) : '';
+    if (!state.tracks.length) return restore + renderEmptyLibrary();
+    const going = getContinueBooks().slice(0, 8);
+    const continueRow = going.length ? `
+        <section class="home-section">
+            <div class="home-section-head">
+                <h2 class="home-section-title">Continue listening</h2>
+            </div>
+            <div class="home-row">
+                ${going.map(p => renderHomeAlbumCard(p.album, 'audiobook', fmtLeft(p.left))).join('')}
+            </div>
+        </section>` : '';
 
     const recents = getListenableTracks().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 12);
     const audiobooks = getAudiobooks();
@@ -3383,21 +3590,24 @@ function renderHomeView() {
                 <div class="home-hero-sub">${songCount} song${songCount !== 1 ? 's' : ''} · ${albums.length} album${albums.length !== 1 ? 's' : ''} · ${audiobooks.length} audiobook${audiobooks.length !== 1 ? 's' : ''}</div>
             </div>
         </div>
+        ${restore}
+        ${continueRow}
         ${recentRow}
         ${audiobookRow}
         ${albumRow}
     `;
 }
 
-function renderHomeAlbumCard(album, kind) {
+function renderHomeAlbumCard(album, kind, sub) {
     return `
         <div class="album-card home-card" data-album-key="${escapeHtml(album.key)}" data-album-kind="${kind}">
             <div class="album-art">
                 ${albumArtHTML(album)}
+                ${bookBadges(album.key)}
                 ${renderPlayOverlay(album.key)}
             </div>
             <div class="album-name">${escapeHtml(displayAlbumName(album))}</div>
-            <div class="album-artist">${escapeHtml(album.artist)}</div>
+            ${sub ? `<div class="book-left">${escapeHtml(sub)}</div>` : `<div class="album-artist">${escapeHtml(album.artist)}</div>`}
         </div>`;
 }
 
@@ -3449,6 +3659,8 @@ function refreshSidebarCounts() {
     $('songs-count').textContent = getSongTracks().length || '';
     $('audiobooks-count').textContent = getAudiobooks().length || '';
     $('shelf-count').textContent = state.shelf.tracks.length || '';
+    const used = state.tracks.reduce((a, t) => a + ((t.file && t.file.size) || 0), 0);
+    $('storage-count').textContent = used ? fmtSize(used) : '';
     renderPlaylistsList();
 }
 
@@ -3520,7 +3732,7 @@ function shelfObj(t) {
         kind: t.kind === 'spoken' ? 'audiobook' : 'music',
         remote: t,
         artwork: null,
-        chapters: null,
+        chapters: t.chapters || null,
         bookmarks: [],
         lyrics: null,
     };
@@ -3545,8 +3757,15 @@ async function loadShelf(force) {
         if (!res.ok) throw new Error('The mini answered ' + res.status);
         const data = await res.json();
         state.shelf.tracks = data.tracks || [];
-        state.shelf.tracks.forEach(shelfObj);
+        for (const t of state.shelf.tracks) {
+            const o = shelfObj(t);
+            o.remote = t;                         // fresh phone-copy / chapter info
+            o.chapters = t.chapters || null;
+        }
         state.shelf.loaded = true;
+        adoptShelfChapters();
+        checkWaiting();
+        checkRestore().catch(() => {});
         if (!state.shelf.resumedOnce) { state.shelf.resumedOnce = true; resumeCutOffDownloads().catch(() => {}); }
     } catch (err) {
         console.warn('Shelf load failed', err);
@@ -3653,7 +3872,9 @@ function shelfTrackRow(t, owned) {
     const have = owned.has(t.id);
     const playing = state.currentTrack && state.currentTrack.id === obj.id;
     const btn = shelfButtonHtml(t.id, have);
-    const bits = [sh.group ? '' : t.genre, fmtTime(t.seconds || 0), fmtSize(t.bytes)].filter(Boolean).join(' · ');
+    const chs = Array.isArray(t.chapters) && t.chapters.length > 1 ? `${t.chapters.length} chapters` : '';
+    const size = t.phone ? `${fmtSize(t.phone.bytes)} for the phone` : fmtSize(t.bytes);
+    const bits = [sh.group ? '' : t.genre, fmtTime(t.seconds || 0), chs, size].filter(Boolean).join(' · ');
     return `
         <div class="shelf-row ${playing ? 'playing' : ''} ${have ? 'have' : ''}" data-id="${escapeHtml(obj.id)}" data-shelf="${escapeHtml(t.id)}">
             <div class="shelf-main">
@@ -3671,6 +3892,11 @@ function shelfTrackRow(t, owned) {
 // on the device, or not yet.
 function shelfButtonHtml(rel, have) {
     const sh = state.shelf;
+    if (sh.waiting.has(rel)) {
+        const t = sh.tracks.find(x => x.id === rel);
+        const pct = t && (sh.waiting.get(rel) === 'boost' ? null : t.phonePct);
+        return `<button class="shelf-dl working" data-act="unwait" title="The mini is making the small phone copy — it starts by itself">Making${pct != null ? ' ' + pct + '%' : '…'} ✕</button>`;
+    }
     if (sh.active === rel) return `<button class="shelf-dl working" data-act="pause">${sh.busy.get(rel) || 0}% ✕</button>`;
     if (sh.queue.includes(rel)) return `<button class="shelf-dl working" data-act="unqueue">Waiting ✕</button>`;
     if (have) return `<button class="shelf-dl have" data-act="remove">✓ On device</button>`;
@@ -3797,6 +4023,7 @@ function renderShelfView() {
                 <button class="btn-ghost" id="shelf-refresh-btn">Refresh</button>
             </div>
         </div>
+        ${sh.restore ? renderRestoreCard(sh.restore) : ''}
         <div class="shelf-chips">${chips}</div>
         ${list.length ? `<div class="shelf-list">${rows}</div>`
             : `<div class="empty"><div class="empty-icon">⌕</div><div class="empty-text">Nothing here matches.</div></div>`}
@@ -3855,6 +4082,7 @@ function bindShelfView() {
                 else if (btn.dataset.act === 'remove') shelfRemove(rel);
                 else if (btn.dataset.act === 'pause') shelfPause(rel);
                 else if (btn.dataset.act === 'unqueue') shelfUnqueue(rel);
+                else if (btn.dataset.act === 'unwait') { state.shelf.waiting.delete(rel); render(); }
                 else if (btn.dataset.act === 'menu') showShelfMenu(e, rel);
                 return;
             }
@@ -3963,21 +4191,57 @@ function okToDownload(bytes, what) {
         ? `You're on mobile data.\n\n${what} ${/^These /.test(what) ? 'come to' : 'is'} ${fmtSize(bytes)}. Download it anyway?`
         : `${what} ${/^These /.test(what) ? 'come to' : 'is'} ${fmtSize(bytes)}.\n\nIf you're on mobile data rather than Wi-Fi, that all comes out of your allowance. Download it now?`);
 }
+// ---- Which copy comes down ----
+// Anything on the spoken shelf has a phone copy made by the mini: mono, voice
+// levelled, chapters inside, about a quarter of the size. That's the default.
+// A book with Voice boost on takes the boosted copy instead. 'full' is the
+// file exactly as it sits on the shelf — music always, a book only if asked.
+const shelfTrack = (rel) => state.shelf.tracks.find(x => x.id === rel) || null;
+function defaultCopy(t) {
+    if (!t || t.kind !== 'spoken') return 'full';
+    if (t.phoneState === 'skip') return 'full';          // already small — nothing to gain
+    return 'phone';
+}
+function copyReady(t, src) {
+    if (src === 'phone') return !!t.phone;
+    if (src === 'boost') return !!t.boost;
+    return true;
+}
+function copyOf(t, src) {
+    const base = (t.file || 'audio').replace(/\.[^.]+$/, '');
+    if (src === 'phone' && t.phone) return { url: t.phone.download, bytes: t.phone.bytes, name: base + '.m4b' };
+    if (src === 'boost' && t.boost) return { url: t.boost.download, bytes: t.boost.bytes, name: base + ' (voice boost).m4b' };
+    return { url: t.download, bytes: t.bytes, name: t.file };
+}
+// What we expect to pull down — a copy not made yet is guessed from its length.
+function copyBytes(t, src) {
+    if (copyReady(t, src)) return copyOf(t, src).bytes;
+    return Math.round((t.seconds || 0) * 6000) || t.bytes;
+}
+const COPY_LABEL = { phone: 'Phone copy', boost: 'Voice boost', full: 'Full size' };
+
 // What a tap on Download goes through. Carrying on by itself after a cut-off
 // does not ask again — you already said yes.
-function shelfAskDownload(rels) {
+//   opts.src: a copy for all, or a Map rel -> copy (a restore)
+//   opts.replace: swap the copy already on the device for this one
+function shelfAskDownload(rels, opts = {}) {
+    const sh = state.shelf;
     const owned = ownedShelfIds();
-    const todo = rels.filter(r => !owned.has(r) && state.shelf.active !== r && !state.shelf.queue.includes(r));
-    if (!todo.length) return;
+    const todo = rels.filter(r => (opts.replace || !owned.has(r)) && sh.active !== r && !sh.queue.includes(r) && shelfTrack(r));
+    if (!todo.length) return false;
+    const srcOf = (r) => opts.src instanceof Map ? (opts.src.get(r) || defaultCopy(shelfTrack(r))) : (opts.src || defaultCopy(shelfTrack(r)));
     const bytes = todo.reduce((a, r) => {
-        const t = state.shelf.tracks.find(x => x.id === r);
+        const t = shelfTrack(r);
+        const src = srcOf(r);
+        const partial = (sh.want.get(r) || defaultCopy(t)) === src ? (sh.partial.get(r) || 0) : 0;
         // A part-download only needs what is left.
-        return a + (t ? t.bytes * (1 - (state.shelf.partial.get(r) || 0) / 100) : 0);
+        return a + copyBytes(t, src) * (1 - partial / 100);
     }, 0);
-    const first = state.shelf.tracks.find(x => x.id === todo[0]);
+    const first = shelfTrack(todo[0]);
     const what = todo.length > 1 ? `These ${todo.length}` : `"${first ? first.title : 'This'}"`;
-    if (!okToDownload(bytes, what)) return;
-    todo.forEach(shelfDownload);
+    if (!okToDownload(bytes, what)) return false;
+    for (const r of todo) shelfDownload(r, srcOf(r), !!opts.replace);
+    return true;
 }
 // Android only: walking out of Wi-Fi mid-download pauses it rather than
 // carrying on over mobile data. Resume asks first.
@@ -3987,13 +4251,64 @@ navigator.connection?.addEventListener?.('change', () => {
     state.shelf.stop = true;
 });
 
-function shelfDownload(rel) {
+function shelfDownload(rel, src, replace) {
     const sh = state.shelf;
-    if (sh.active === rel || sh.queue.includes(rel) || ownedShelfIds().has(rel)) return;
-    if (!sh.tracks.some(x => x.id === rel)) return;
+    const t = shelfTrack(rel);
+    if (!t || sh.active === rel || sh.queue.includes(rel)) return;
+    if (!replace && ownedShelfIds().has(rel)) return;
+    src = src || defaultCopy(t);
+    if (replace) sh.replacing.add(rel); else sh.replacing.delete(rel);
+    // The mini hasn't made that copy yet: ask it to do this one next, and
+    // start by ourselves the moment it's there.
+    if (!copyReady(t, src)) {
+        sh.waiting.set(rel, src);
+        hurryCopy(rel, src === 'boost');
+        render();
+        return;
+    }
+    sh.waiting.delete(rel);
+    sh.want.set(rel, src);
     sh.queue.push(rel);
     if (sh.active) render();
     pumpDownloads();
+}
+
+async function hurryCopy(rel, boost) {
+    try {
+        const enc = rel.split('/').map(encodeURIComponent).join('/');
+        await fetch(shelfUrl('/hurry/' + enc + (boost ? '?boost=1' : '')), { method: 'POST' });
+    } catch {}
+    startWaitPoll();
+}
+// While anything is waiting on the mini, look at the catalog every few
+// seconds. Give up quietly after 20 minutes — the mini may be asleep.
+let _waitPoll = null, _waitSince = 0;
+function startWaitPoll() {
+    if (_waitPoll) return;
+    _waitSince = Date.now();
+    _waitPoll = setInterval(async () => {
+        if (!state.shelf.waiting.size || Date.now() - _waitSince > 20 * 60000) {
+            if (state.shelf.waiting.size) { state.shelf.waiting.clear(); toast('The mini is taking a while — try the download again later'); render(); }
+            clearInterval(_waitPoll); _waitPoll = null; return;
+        }
+        await loadShelf(true);
+    }, 6000);
+}
+// After a catalog load: anything whose copy is now made starts downloading.
+function checkWaiting() {
+    const sh = state.shelf;
+    for (const [rel, src] of Array.from(sh.waiting)) {
+        const t = shelfTrack(rel);
+        if (!t) { sh.waiting.delete(rel); continue; }
+        if (copyReady(t, src)) { sh.waiting.delete(rel); shelfDownload(rel, src, sh.replacing.has(rel)); }
+        else if (src === 'phone' && t.phoneState === 'skip') { sh.waiting.delete(rel); shelfDownload(rel, 'full', sh.replacing.has(rel)); }
+    }
+    // The voice switch on a streamed book waits the same way.
+    const cur = state.currentTrack;
+    if (cur && cur.remote && state._boostSwitchPending) {
+        const want = prefsFor(cur).boost ? 'boost' : 'phone';
+        if (copyReady(cur.remote, want)) { state._boostSwitchPending = false; switchStreamCopy(); }
+    }
 }
 
 function shelfPause(rel) {
@@ -4072,14 +4387,17 @@ async function fetchPiece(url, start, end) {
 
 async function runDownload(t) {
     const rel = t.id;
-    const size = t.bytes;
+    const src = state.shelf.want.get(rel) || defaultCopy(t);
+    const copy = copyOf(t, copyReady(t, src) ? src : 'full');
+    const size = copy.bytes;
     if (!size) throw new Error('no size in the catalog');
-    const url = shelfUrl(t.download);
+    const url = shelfUrl(copy.url);
     const pieces = Math.ceil(size / PIECE);
+    const replace = state.shelf.replacing.has(rel);
     let m = await dbGet('parts', dlKey(rel));
-    if (!m || m.size !== size) {                       // new, or the file changed on the mini
+    if (!m || m.size !== size || (m.src || 'full') !== src) {   // new, another copy, or the file changed
         await partsClear(rel);
-        m = { key: dlKey(rel), rel, size, done: 0, tries: 0 };
+        m = { key: dlKey(rel), rel, size, src, replace, done: 0, tries: 0 };
     }
     m.tries = (m.tries || 0) + 1;
     await partsPut([m]);
@@ -4101,13 +4419,120 @@ async function runDownload(t) {
         await partsClear(rel);
         throw new Error(`pieces don't add up (${total}/${size}) — starting that one again`);
     }
-    const ext = (t.file.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+    const ext = (copy.name.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
     const type = { mp3: 'audio/mpeg', m4a: 'audio/mp4', m4b: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg',
         opus: 'audio/ogg', wav: 'audio/wav', flac: 'audio/flac' }[ext.toLowerCase()] || 'audio/mpeg';
-    const file = new File(blobs, t.file, { type });
-    await importFiles([file], { shelfId: rel });
-    if (!ownedShelfIds().has(rel)) throw new Error('import failed');
+    const file = new File(blobs, copy.name, { type });
+    const old = replace ? state.tracks.filter(x => x.shelfId === rel) : [];
+    const made = await importFiles([file], shelfImportExtra(t, src));
+    if (!made || !made.length) throw new Error('import failed');
+    for (const o of old) await carryOver(o, made[0]);
+    state.shelf.replacing.delete(rel);
     await partsClear(rel);
+    applyPendingBooks();
+    requestPersist();
+    scheduleBackup(true);
+}
+
+// How a shelf file is filed once it's on the device. Spoken word is always a
+// book. The parts of a series (a folder, or "Book 01…Book 11") become ONE book
+// with its parts in order, so it has one place-marker and one finished tick.
+function shelfImportExtra(t, src) {
+    const extra = { shelfId: t.id, shelfCopy: src };
+    if (t.kind !== 'spoken') return extra;
+    extra.kind = 'audiobook';
+    const series = shelfSeries(t);
+    if (series) {
+        const members = state.shelf.tracks.filter(x => seriesKey(x) === seriesKey(t)).sort((a, b) => numericCompare(a.id, b.id));
+        extra.album = series;
+        extra.albumArtist = 'The Shelf';
+        extra.trackNum = members.findIndex(x => x.id === t.id) + 1;
+    } else {
+        extra.albumFallback = t.title;
+    }
+    if (Array.isArray(t.chapters) && t.chapters.length > 1) extra.chaptersFallback = t.chapters;
+    return extra;
+}
+
+// One copy of a book swapped for another (phone copy for the full file, the
+// boosted copy for the plain one): the new one inherits everything — stars,
+// playlists, your place, the finished tick, its speed — and if it's playing,
+// it carries on from the same second.
+async function carryOver(oldT, newT) {
+    const oldKey = albumKey(oldT), newKey = albumKey(newT);
+    newT.bookmarks = oldT.bookmarks || [];
+    newT.addedAt = oldT.addedAt || newT.addedAt;
+    if (!newT.lyrics && oldT.lyrics) newT.lyrics = oldT.lyrics;
+    await dbPut('tracks', newT);
+    for (const pl of state.playlists) {
+        if (!pl.trackIds.includes(oldT.id)) continue;
+        pl.trackIds = pl.trackIds.map(i => i === oldT.id ? newT.id : i);
+        await dbPut('playlists', pl);
+    }
+    const pos = state.positions.get(oldKey);
+    if (pos && pos.trackId === oldT.id) {
+        const v = { ...pos, trackId: newT.id };
+        if (oldKey !== newKey) clearPosition(oldKey);
+        state.positions.set(newKey, v);
+        await dbPut('meta', { key: 'ab-pos-' + newKey, value: v });
+    }
+    if (oldKey !== newKey) {
+        if (state.finished.has(oldKey)) { state.finished.delete(oldKey); state.finished.add(newKey); await saveFinished(); }
+        if (state.bookPrefs.has(oldKey)) { state.bookPrefs.set(newKey, state.bookPrefs.get(oldKey)); state.bookPrefs.delete(oldKey); await saveBookPrefs(); }
+    }
+    const playingOld = state.currentTrack && state.currentTrack.id === oldT.id;
+    state.queue = state.queue.map(i => i === oldT.id ? newT.id : i);
+    await dbDelete('tracks', oldT.id);
+    state.tracks = state.tracks.filter(x => x.id !== oldT.id);
+    if (playingOld) {
+        const at = audio.currentTime || 0;
+        const wasPlaying = !audio.paused;
+        state.currentTrack = newT;
+        if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+        currentObjectURL = URL.createObjectURL(playableBlob(newT));
+        audio.src = currentObjectURL;
+        audio.playbackRate = speedFor(newT);
+        await new Promise(r => audio.addEventListener('loadedmetadata', r, { once: true }));
+        audio.currentTime = at;
+        if (wasPlaying) audio.play().catch(() => {});
+        updateTrackInfo();
+    }
+}
+
+// Tracks downloaded before the mini could find chapters pick them up now.
+async function adoptShelfChapters() {
+    let changed = false;
+    for (const t of state.tracks) {
+        if (!t.shelfId || (Array.isArray(t.chapters) && t.chapters.length > 1)) continue;
+        const s = shelfTrack(t.shelfId);
+        if (!s || !Array.isArray(s.chapters) || s.chapters.length < 2) continue;
+        t.chapters = s.chapters;
+        await dbPut('tracks', t);
+        changed = true;
+    }
+    if (changed && ['audiobook', 'album'].includes(state.currentView.kind)) render();
+    if (changed && state.currentTrack) updateNpChapters(state.currentTrack);
+}
+
+// Streaming a book: the small copy when the mini has it (less data, same
+// chapters), the boosted one when that's switched on.
+function streamUrlFor(track) {
+    const r = track.remote;
+    if (r.kind !== 'spoken') return r.url;
+    if (prefsFor(track).boost && r.boost) return r.boost.url;
+    if (r.phone) return r.phone.url;
+    return r.url;
+}
+async function switchStreamCopy() {
+    const t = state.currentTrack;
+    if (!t || !t.remote) return;
+    const at = audio.currentTime || 0;
+    const wasPlaying = !audio.paused;
+    audio.src = shelfUrl(streamUrlFor(t));
+    audio.playbackRate = speedFor(t);
+    await new Promise(r => audio.addEventListener('loadedmetadata', r, { once: true }));
+    audio.currentTime = at;
+    if (wasPlaying) audio.play().catch(() => {});
 }
 
 // Which downloads were cut off part-way, and how far each got.
@@ -4126,7 +4551,7 @@ async function refreshPartials() {
 async function resumeCutOffDownloads() {
     const notes = await refreshPartials();
     if (netKind() === 'mobile') return;               // wait for Wi-Fi, or a tap
-    for (const n of notes) if ((n.tries || 0) < 4) shelfDownload(n.rel);
+    for (const n of notes) if ((n.tries || 0) < 4) shelfDownload(n.rel, n.src || 'full', !!n.replace);
 }
 
 // Coming back to the app, or getting signal back, restarts anything that
@@ -4135,7 +4560,7 @@ function retryCutOff() {
     const sh = state.shelf;
     if (sh.active) { holdWake(); return; }
     if (netKind() === 'mobile') return;
-    for (const rel of sh.cutOff) shelfDownload(rel);
+    for (const rel of sh.cutOff) shelfDownload(rel, sh.want.get(rel), sh.replacing.has(rel));
     sh.cutOff.clear();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retryCutOff(); });
@@ -4153,6 +4578,10 @@ function showShelfMenu(e, rel) {
         { divider: true },
         have ? { label: 'Remove the download', action: () => shelfRemove(rel), danger: true }
              : { label: state.shelf.partial.has(rel) ? 'Carry on downloading' : 'Download into Hifi', action: () => shelfAskDownload([rel]) },
+        ...(t.kind === 'spoken' && !have && t.phoneState !== 'skip'
+            ? [{ label: `Download the full-size file (${fmtSize(t.bytes)})`, action: () => shelfAskDownload([rel], { src: 'full' }) }] : []),
+        ...(have && t.phone && (state.tracks.find(x => x.shelfId === rel) || {}).shelfCopy === 'full'
+            ? [{ label: `Swap for the phone copy — frees ${fmtSize(t.bytes - t.phone.bytes)}`, action: () => shelfAskDownload([rel], { src: 'phone', replace: true }) }] : []),
         ...(state.shelf.partial.has(rel) && state.shelf.active !== rel
             ? [{ label: 'Throw away the part-download', danger: true, action: async () => {
                   await partsClear(rel); await refreshPartials(); render(); } }] : []),
@@ -4231,6 +4660,366 @@ async function shelfRemove(rel, quiet) {
 }
 
 // ============================================================
+// KEEPING DOWNLOADS SAFE
+// iOS may clear a web app's storage when the phone runs short of space. We
+// ask the browser not to (navigator.storage.persist), and we keep a note on
+// the mini of what this device holds and where you are in every book. If the
+// phone is ever wiped, Hifi finds that note and puts it all back in one tap.
+// ============================================================
+function guessDeviceName() {
+    const ua = navigator.userAgent || '';
+    if (/iPhone/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+    if (/Android/.test(ua)) return 'Android phone';
+    if (/Macintosh/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows PC';
+    return 'A device';
+}
+async function loadDevice() {
+    const d = await dbGet('meta', 'device');
+    if (d?.value?.id) { state.device = d.value; return; }
+    state.device = { id: 'd-' + uid() + uid(), name: guessDeviceName(), since: Date.now() };
+    await dbPut('meta', { key: 'device', value: state.device });
+}
+async function requestPersist() {
+    try {
+        if (!navigator.storage) return;
+        state.persisted = navigator.storage.persisted ? await navigator.storage.persisted() : null;
+        if (!state.persisted && navigator.storage.persist) state.persisted = await navigator.storage.persist();
+    } catch {}
+}
+
+function backupPayload() {
+    const owned = state.tracks.filter(t => t.shelfId).map(t => ({ rel: t.shelfId, copy: t.shelfCopy || 'full' }));
+    const books = [];
+    const seen = new Set();
+    for (const t of state.tracks) {
+        if (!t.shelfId) continue;
+        const k = albumKey(t);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const album = getAlbum(k);
+        if (!album) continue;
+        const p = state.positions.get(k);
+        const cur = p && album.tracks.find(x => x.id === p.trackId);
+        const pref = state.bookPrefs.get(k) || {};
+        books.push({
+            rels: album.tracks.map(x => x.shelfId).filter(Boolean),
+            cur: cur ? cur.shelfId : null, pos: p ? Math.floor(p.position) : 0, ts: p ? p.ts : 0,
+            done: state.finished.has(k), speed: pref.speed || null, boost: !!pref.boost,
+        });
+    }
+    return { name: state.device.name, owned, books };
+}
+let _backupTimer = null, _backupDirty = false;
+function scheduleBackup(soon) {
+    _backupDirty = true;
+    if (!state.shelf.token) return;
+    clearTimeout(_backupTimer);
+    _backupTimer = setTimeout(() => backupNow(), soon ? 1500 : 30000);
+}
+async function backupNow(leaving) {
+    if (!state.shelf.token || !state.device) return;
+    clearTimeout(_backupTimer);
+    try {
+        const res = await fetch(shelfUrl('/devices/' + state.device.id), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(backupPayload()), keepalive: !!leaving,
+        });
+        if (res.ok) { state.lastBackup = Date.now(); _backupDirty = false; }
+    } catch {}
+}
+// Leaving the app is the moment most likely to be the last one: send it then.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && _backupDirty) backupNow(true);
+});
+
+// After the shelf loads: is there a note from a device whose downloads aren't
+// here? On a device with nothing from the shelf on it (new, or wiped), offer it.
+async function checkRestore() {
+    if (!state.device) return;
+    const res = await fetch(shelfUrl('/devices'), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const sh = state.shelf;
+    sh.devices = data.devices || [];
+    const mine = ownedShelfIds();
+    const onShelf = new Set(sh.tracks.map(t => t.id));
+    const dismissed = (await dbGet('meta', 'restoreDismissed'))?.value || [];
+    const missing = (d) => (d.owned || []).filter(o => onShelf.has(o.rel) && !mine.has(o.rel));
+    const cand = sh.devices.find(d => d.id !== state.device.id && !dismissed.includes(d.id) && missing(d).length);
+    const before = sh.restore;
+    sh.restore = mine.size === 0 && cand ? { ...cand, missing: missing(cand) } : null;
+    if (!!before !== !!sh.restore && ['home', 'shelf', 'storage'].includes(state.currentView.kind)) render();
+    // First backup from this device, so the mini knows about it from day one.
+    if (_backupDirty || !state.lastBackup) scheduleBackup(true);
+}
+
+function restoreSize(d) {
+    return (d.missing || []).reduce((a, o) => { const t = shelfTrack(o.rel); return a + (t ? copyBytes(t, pickRestoreCopy(t, o.copy)) : 0); }, 0);
+}
+function pickRestoreCopy(t, copy) {
+    if (copy === 'boost') return 'boost';
+    if (copy === 'phone' || defaultCopy(t) === 'phone') return 'phone';
+    return 'full';
+}
+function renderRestoreCard(d) {
+    // A series counts once; spoken word is a book, anything else a track.
+    const things = new Map();
+    for (const o of d.missing || []) {
+        const t = shelfTrack(o.rel);
+        if (t) things.set(seriesKey(t) || t.id, t.kind === 'spoken');
+    }
+    const nBooks = Array.from(things.values()).filter(Boolean).length;
+    const nTracks = things.size - nBooks;
+    const count = [nBooks ? `${nBooks} book${nBooks !== 1 ? 's' : ''}` : '', nTracks ? `${nTracks} track${nTracks !== 1 ? 's' : ''}` : '']
+        .filter(Boolean).join(' and ');
+    const when = new Date(d.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    return `<div class="dev-card restore-card">
+        <h3>Put back what was on your ${escapeHtml(d.name)}?</h3>
+        <p>${count} · ${fmtSize(restoreSize(d))} · last seen ${escapeHtml(when)}. Your place in every book and your finished ticks come back too.</p>
+        <div class="row">
+            <button class="btn-primary" data-restore="${escapeHtml(d.id)}">Put them back</button>
+            <button class="btn-ghost" data-restore-no="${escapeHtml(d.id)}">Not now</button>
+        </div>
+    </div>`;
+}
+async function restoreFrom(id) {
+    const d = state.shelf.devices.find(x => x.id === id);
+    if (!d) return;
+    const mine = ownedShelfIds();
+    const items = (d.owned || []).filter(o => shelfTrack(o.rel) && !mine.has(o.rel));
+    const src = new Map(items.map(o => [o.rel, pickRestoreCopy(shelfTrack(o.rel), o.copy)]));
+    state.pendingBooks = (d.books || []).map(b => ({ ...b }));
+    await dbPut('meta', { key: 'pendingBooks', value: state.pendingBooks });
+    applyPendingBooks();
+    if (shelfAskDownload(items.map(o => o.rel), { src })) {
+        state.shelf.restore = null;
+        toast(`Putting back ${items.length} — they come down one at a time`);
+        render();
+    }
+}
+async function dismissRestore(id) {
+    const cur = (await dbGet('meta', 'restoreDismissed'))?.value || [];
+    await dbPut('meta', { key: 'restoreDismissed', value: [...cur, id] });
+    state.shelf.restore = null;
+    render();
+}
+// As each restored file lands, its book gets its place, tick and settings back.
+async function applyPendingBooks() {
+    if (!state.pendingBooks.length) return;
+    const byRel = new Map(state.tracks.filter(t => t.shelfId).map(t => [t.shelfId, t]));
+    const left = [];
+    for (const b of state.pendingBooks) {
+        const any = b.rels.map(r => byRel.get(r)).find(Boolean);
+        if (!any) { left.push(b); continue; }
+        const k = albumKey(any);
+        const cur = b.cur && byRel.get(b.cur);
+        if (b.cur && !cur) { left.push(b); continue; }   // wait for the part you were in
+        if (cur && b.pos > 5 && !state.positions.has(k)) {
+            const v = { trackId: cur.id, position: b.pos, ts: b.ts || Date.now() };
+            state.positions.set(k, v);
+            await dbPut('meta', { key: 'ab-pos-' + k, value: v });
+        }
+        if (b.done) state.finished.add(k);
+        if (b.speed || b.boost) state.bookPrefs.set(k, { ...(state.bookPrefs.get(k) || {}), ...(b.speed ? { speed: b.speed } : {}), ...(b.boost ? { boost: true } : {}) });
+    }
+    state.pendingBooks = left;
+    await Promise.all([saveFinished(), saveBookPrefs(), dbPut('meta', { key: 'pendingBooks', value: left })]);
+}
+
+// ============================================================
+// VOICE BOOST
+// A louder, clearer copy of a book, made by the mini. Built into the file
+// rather than done live, because iPhone suspends Web Audio when the screen
+// locks — a live filter would stop the book in your pocket.
+// ============================================================
+function boostTarget(t) {
+    // The shelf file behind the track playing (downloaded or streamed).
+    if (!t) return null;
+    if (t.remote) return t.remote.kind === 'spoken' ? t.remote : null;
+    if (t.shelfId) { const s = shelfTrack(t.shelfId); return s && s.kind === 'spoken' ? s : null; }
+    return null;
+}
+function updateBoostUI() {
+    const b = $('np-boost');
+    if (!b) return;
+    const t = state.currentTrack;
+    const target = boostTarget(t);
+    const on = !!prefsFor(t).boost;
+    b.disabled = !target;
+    b.classList.toggle('active', on && !!target);
+    b.textContent = on && target ? 'Voice ✓' : 'Voice';
+    b.title = target ? (on ? 'Voice boost is on for this book — tap to go back to the plain copy'
+        : 'Voice boost: a louder, clearer copy of this book, made by the mini')
+        : 'Voice boost works on books from the Shelf';
+}
+async function toggleBoost() {
+    const t = state.currentTrack;
+    const target = boostTarget(t);
+    if (!target) { toast(state.shelf.token ? 'Voice boost works on books from the Shelf' : 'Connect the Shelf to use Voice boost'); return; }
+    const k = albumKey(t);
+    const on = !prefsFor(t).boost;
+    state.bookPrefs.set(k, { ...(state.bookPrefs.get(k) || {}), boost: on });
+    saveBookPrefs();
+    updateBoostUI();
+    if (t.remote) {
+        const want = on ? 'boost' : 'phone';
+        if (copyReady(target, want) || !on) { switchStreamCopy(); toast(on ? 'Voice boost on' : 'Voice boost off'); }
+        else { state._boostSwitchPending = true; hurryCopy(target.id, true); toast('The mini is making the boosted copy — it switches over by itself'); }
+        return;
+    }
+    // Downloaded: swap each part of this book for the other copy. Your place,
+    // stars and speed carry across.
+    const album = getAlbum(k);
+    const rels = (album ? album.tracks : [t]).map(x => x.shelfId).filter(Boolean);
+    const back = (r) => { const s = shelfTrack(r); return s && s.phone ? 'phone' : 'full'; };
+    const src = new Map(rels.map(r => [r, on ? 'boost' : back(r)]));
+    if (!shelfAskDownload(rels, { src, replace: true })) {
+        state.bookPrefs.set(k, { ...(state.bookPrefs.get(k) || {}), boost: !on });
+        saveBookPrefs(); updateBoostUI();
+        return;
+    }
+    scheduleBackup();
+    toast(on ? 'Fetching the boosted copy — it swaps in without losing your place' : 'Going back to the plain copy');
+}
+
+// ============================================================
+// ON THIS DEVICE — what's taking the space, and what's safe
+// ============================================================
+function bookGroups() {
+    const groups = new Map();
+    for (const t of state.tracks) {
+        const k = albumKey(t);
+        if (!groups.has(k)) groups.set(k, { key: k, tracks: [], bytes: 0 });
+        const g = groups.get(k);
+        g.tracks.push(t);
+        g.bytes += (t.file && t.file.size) || 0;
+    }
+    return Array.from(groups.values()).sort((a, b) => b.bytes - a.bytes);
+}
+function renderStorageView() {
+    const groups = bookGroups();
+    const used = groups.reduce((a, g) => a + g.bytes, 0);
+    const est = state._estimate;
+    const sh = state.shelf;
+    const persistLine = state.persisted
+        ? '<span class="dev-ok">✓ Protected</span> — this device has agreed not to clear Hifi when it runs short of space.'
+        : `<span class="dev-warn">Not protected yet</span> — ${/iPhone|iPad/.test(guessDeviceName()) ? 'on iPhone that comes from adding Hifi to the Home Screen and using it from there.' : 'the browser may clear it when space runs short.'}`;
+    const backupLine = !sh.token ? 'Connect the Shelf and your list of downloads and your place in every book are kept on the mini too.'
+        : state.lastBackup ? `Your list and your place in every book are kept on the mini too (last sent ${new Date(state.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}). If this device is ever wiped, Hifi offers to put everything back.`
+        : 'Your list and your place in every book are kept on the mini too.';
+    const finished = groups.filter(g => state.finished.has(g.key));
+    const finishedBytes = finished.reduce((a, g) => a + g.bytes, 0);
+    const swappable = [];
+    const rows = groups.map(g => {
+        const album = getAlbum(g.key);
+        const name = album ? displayAlbumName(album) : (g.tracks[0].title || '');
+        const isBook = albumCategory(g.key) === 'audiobook';
+        const fromShelf = g.tracks.filter(t => t.shelfId);
+        const copies = Array.from(new Set(fromShelf.map(t => COPY_LABEL[t.shelfCopy || 'full'])));
+        const canSwap = fromShelf.filter(t => (t.shelfCopy || 'full') === 'full' && shelfTrack(t.shelfId)?.phone);
+        const saves = canSwap.reduce((a, t) => a + (t.file.size - shelfTrack(t.shelfId).phone.bytes), 0);
+        if (saves > 0) swappable.push(...canSwap.map(t => t.shelfId));
+        const prog = isBook && !state.finished.has(g.key) && state.positions.has(g.key) ? bookProgress(g.key) : null;
+        const sub = [
+            fmtSize(g.bytes),
+            g.tracks.length > 1 ? `${g.tracks.length} ${isBook ? 'parts' : 'tracks'}` : '',
+            state.finished.has(g.key) ? '✓ finished' : prog && prog.done > 30 ? fmtLeft(prog.left) : '',
+            copies.join(' + '),
+            fromShelf.length ? '' : 'added from files — not on the mini',
+        ].filter(Boolean).join(' · ');
+        return `<div class="dev-row">
+            <div><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
+            <div class="acts">
+                ${saves > 0 ? `<button class="pill-toggle" data-swap="${escapeHtml(g.key)}">Phone copy · frees ${fmtSize(saves)}</button>` : ''}
+                <button class="pill-toggle" data-drop="${escapeHtml(g.key)}">Remove</button>
+            </div>
+        </div>`;
+    }).join('');
+    const partials = Array.from(sh.partial.entries()).filter(([rel]) => sh.active !== rel);
+    const partialRows = partials.map(([rel, pct]) => {
+        const t = shelfTrack(rel);
+        return `<div class="dev-row"><div><div class="name">${escapeHtml(t ? t.title : rel.split('/').pop())}</div>
+            <div class="sub">Part-downloaded · ${pct}%</div></div>
+            <div class="acts"><button class="pill-toggle" data-partial-go="${escapeHtml(rel)}">Carry on</button>
+            <button class="pill-toggle" data-partial-drop="${escapeHtml(rel)}">Throw away</button></div></div>`;
+    }).join('');
+    const others = (sh.devices || []).filter(d => d.id !== state.device?.id && (d.owned || []).length);
+    const restoreRows = others.map(d => {
+        const mine = ownedShelfIds();
+        const missing = (d.owned || []).filter(o => shelfTrack(o.rel) && !mine.has(o.rel));
+        return `<div class="dev-row"><div><div class="name">${escapeHtml(d.name)}</div>
+            <div class="sub">${(d.owned || []).length} downloads · last seen ${new Date(d.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}${missing.length ? ` · ${missing.length} not on this device` : ' · all on this device too'}</div></div>
+            <div class="acts">${missing.length ? `<button class="pill-toggle" data-restore="${escapeHtml(d.id)}">Put these here</button>` : ''}</div></div>`;
+    }).join('');
+    return `
+        <div class="view-header"><div>
+            <div class="view-title">On this device</div>
+            <div class="view-subtitle">${fmtSize(used) || '0 MB'} of downloads · ${groups.length} item${groups.length !== 1 ? 's' : ''}</div>
+        </div></div>
+        ${sh.restore ? renderRestoreCard(sh.restore) : ''}
+        <div class="dev-card">
+            <h3>Space</h3>
+            ${est && est.quota ? `<div class="dev-meter"><i style="width:${Math.min(100, (est.usage / est.quota) * 100).toFixed(1)}%"></i></div>
+            <p>Hifi is using ${fmtSize(est.usage) || 'under 1 MB'} of the ${fmtSize(est.quota)} this device lets it have.</p>` : `<p>${fmtSize(used) || 'Nothing'} downloaded.</p>`}
+            ${finishedBytes ? `<div class="row"><button class="btn-ghost" id="drop-finished-btn">Remove finished books · frees ${fmtSize(finishedBytes)}</button></div>` : ''}
+            ${swappable.length > 1 ? `<div class="row"><button class="btn-ghost" id="swap-all-btn">Swap every full-size book for its phone copy</button></div>` : ''}
+        </div>
+        <div class="dev-card">
+            <h3>Safe from being wiped</h3>
+            <p>${persistLine}</p>
+            <p style="margin-top:8px">${backupLine}</p>
+            ${!state.persisted ? '<div class="row"><button class="btn-ghost" id="persist-btn">Ask again</button></div>' : ''}
+        </div>
+        ${partialRows ? `<div class="dev-h">Part-downloaded</div><div class="dev-list">${partialRows}</div>` : ''}
+        <div class="dev-h">Largest first</div>
+        ${rows ? `<div class="dev-list">${rows}</div>` : `<div class="empty"><div class="empty-text">Nothing downloaded yet. Books and music you download from the Shelf show here with their size.</div></div>`}
+        ${restoreRows ? `<div class="dev-h">Your other devices</div><div class="dev-list">${restoreRows}</div>` : ''}
+    `;
+}
+async function refreshEstimate() {
+    try {
+        if (navigator.storage && navigator.storage.estimate) state._estimate = await navigator.storage.estimate();
+        if (navigator.storage && navigator.storage.persisted) state.persisted = await navigator.storage.persisted();
+    } catch {}
+}
+function bindStorageView() {
+    if (state.currentView.kind !== 'storage') return;
+    document.querySelectorAll('[data-drop]').forEach(b => b.addEventListener('click', () => confirmDeleteAlbum(b.dataset.drop)));
+    document.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => {
+        const album = getAlbum(b.dataset.swap);
+        const rels = (album ? album.tracks : []).filter(t => t.shelfId && (t.shelfCopy || 'full') === 'full' && shelfTrack(t.shelfId)?.phone).map(t => t.shelfId);
+        if (shelfAskDownload(rels, { src: 'phone', replace: true })) toast('Swapping for the phone copy — your place stays');
+    }));
+    $('swap-all-btn')?.addEventListener('click', () => {
+        const rels = state.tracks.filter(t => t.shelfId && (t.shelfCopy || 'full') === 'full' && shelfTrack(t.shelfId)?.phone).map(t => t.shelfId);
+        if (shelfAskDownload(rels, { src: 'phone', replace: true })) toast(`Swapping ${rels.length} — one at a time`);
+    });
+    $('drop-finished-btn')?.addEventListener('click', async () => {
+        const gs = bookGroups().filter(g => state.finished.has(g.key));
+        if (!confirm(`Remove ${gs.length} finished book${gs.length !== 1 ? 's' : ''} from this device? The ones from the Shelf stay on the mini.`)) return;
+        for (const g of gs) for (const t of g.tracks) await dbDelete('tracks', t.id);
+        const gone = new Set(gs.flatMap(g => g.tracks.map(t => t.id)));
+        state.tracks = state.tracks.filter(t => !gone.has(t.id));
+        scheduleBackup(true);
+        await refreshEstimate();
+        toast('Removed — still on the shelf');
+        render();
+    });
+    $('persist-btn')?.addEventListener('click', async () => { await requestPersist(); render(); if (!state.persisted) toast('This browser said no — add Hifi to the Home Screen and open it from there'); });
+    document.querySelectorAll('[data-partial-go]').forEach(b => b.addEventListener('click', () => shelfAskDownload([b.dataset.partialGo], { src: state.shelf.want.get(b.dataset.partialGo) })));
+    document.querySelectorAll('[data-partial-drop]').forEach(b => b.addEventListener('click', async () => {
+        await partsClear(b.dataset.partialDrop); await refreshPartials(); await refreshEstimate(); render();
+    }));
+}
+// The restore card can show on Home, the Shelf and here.
+function bindRestoreButtons() {
+    document.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', () => restoreFrom(b.dataset.restore)));
+    document.querySelectorAll('[data-restore-no]').forEach(b => b.addEventListener('click', () => dismissRestore(b.dataset.restoreNo)));
+}
+
+// ============================================================
 // PLAYBACK
 // ============================================================
 let currentObjectURL = null;
@@ -4245,7 +5034,10 @@ async function playList(trackIds, startIdx = 0) {
 async function playAlbum(key) {
     const album = getAlbum(key);
     if (!album) return;
-    await playList(album.tracks.map(t => t.id), 0);
+    // A book carries on from the part you were in, not from part one.
+    const p = state.positions.get(key);
+    const at = p ? album.tracks.findIndex(t => t.id === p.trackId) : -1;
+    await playList(album.tracks.map(t => t.id), Math.max(0, at));
 }
 
 async function shufflePlay(trackIds) {
@@ -4266,20 +5058,23 @@ async function playCurrent() {
     if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
     if (track.remote) {
         // Streamed straight off the mini — no copy is kept on this device.
-        audio.src = shelfUrl(track.remote.url);
+        audio.src = shelfUrl(streamUrlFor(track));
     } else {
         currentObjectURL = URL.createObjectURL(playableBlob(track));
         audio.src = currentObjectURL;
     }
-    audio.playbackRate = state.settings.speed;
+    audio.playbackRate = speedFor(track);
+    audio.defaultPlaybackRate = audio.playbackRate;
     audio.volume = state.settings.volume;
+    updateSpeedUI();
+    updateBoostUI();
 
     // Resume audiobook position
     const k = albumKey(track);
-    if (state.audiobookIds.has(k) || track.kind === 'audiobook') {
-        const saved = await dbGet('meta', 'ab-pos-' + k);
-        if (saved?.value && saved.value.trackId === track.id && saved.value.position > 5) {
-            audio.currentTime = saved.value.position;
+    if (isSpokenTrack(track) || state.audiobookIds.has(k)) {
+        const saved = state.positions.get(k);
+        if (saved && saved.trackId === track.id && saved.position > 5) {
+            audio.currentTime = saved.position;
         }
     }
 
@@ -4525,7 +5320,12 @@ function flashSeek(delta) {
 
 // Keep play/pause icons in sync with the audio element, no matter who triggers it
 audio.addEventListener('play', () => { state.isPlaying = true; updatePlayUI(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
-audio.addEventListener('pause', () => { state.isPlaying = false; updatePlayUI(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
+audio.addEventListener('pause', () => {
+    state.isPlaying = false; updatePlayUI();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    const t = state.currentTrack;
+    if (t && isSpokenTrack(t) && (audio.currentTime || 0) > 0 && !audio.ended) savePosition(t, audio.currentTime);
+});
 audio.addEventListener('waiting', () => updatePlayUI());
 audio.addEventListener('canplay', () => updatePlayUI());
 audio.addEventListener('loadedmetadata', () => {
@@ -4577,19 +5377,41 @@ audio.addEventListener('timeupdate', () => {
 
     // Save audiobook position every ~3s
     const t = state.currentTrack;
-    if (t) {
+    if (t && !audio.paused && cur > 0) {
         const k = albumKey(t);
-        if (state.audiobookIds.has(k) || t.kind === 'audiobook') {
+        if (isSpokenTrack(t) || state.audiobookIds.has(k)) {
             if (!playCurrent._lastSave || Date.now() - playCurrent._lastSave > 3000) {
                 playCurrent._lastSave = Date.now();
-                dbPut('meta', { key: 'ab-pos-' + k, value: { trackId: t.id, position: cur, ts: Date.now() } });
+                savePosition(t, cur);
             }
         }
     }
 });
+// Dragging the scrubber while paused is a new place too.
+audio.addEventListener('seeked', () => {
+    const t = state.currentTrack;
+    if (t && audio.paused && isSpokenTrack(t) && (audio.currentTime || 0) > 0) savePosition(t, audio.currentTime);
+});
+// iOS sometimes resets the rate when a new source loads — put the book's back.
+audio.addEventListener('loadedmetadata', () => {
+    const want = speedFor(state.currentTrack);
+    if (audio.playbackRate !== want) audio.playbackRate = want;
+});
 
 audio.addEventListener('ended', () => {
     if (state.settings.repeat === 'one') { audio.currentTime = 0; audio.play(); return; }
+    // The last part of a book running out means the book is finished.
+    const t = state.currentTrack;
+    if (t && !t.remote && isAudiobookTrack(t)) {
+        const k = albumKey(t);
+        const album = getAlbum(k);
+        if (album && album.tracks[album.tracks.length - 1].id === t.id && !state.finished.has(k)) {
+            setFinished(k, true, true).then(() => {
+                toast('Finished ✓ ' + displayAlbumName(album));
+                if (['home', 'audiobooks', 'audiobook', 'storage'].includes(state.currentView.kind)) render();
+            });
+        }
+    }
     nextTrack();
 });
 
@@ -4790,8 +5612,18 @@ function showBookmarksModal(trackId) {
 
 const SPEEDS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.25, 1.5, 1.75, 2, 2.5, 3];
 function applySpeed(v) {
-    state.settings.speed = v;
+    const t = state.currentTrack;
+    if (isSpokenTrack(t)) {
+        const k = albumKey(t);
+        state.bookPrefs.set(k, { ...(state.bookPrefs.get(k) || {}), speed: v });
+        state.settings.bookSpeed = v;            // the next new book starts here
+        saveBookPrefs();
+        if (t.shelfId) scheduleBackup();
+    } else {
+        state.settings.speed = v;
+    }
     audio.playbackRate = v;
+    audio.defaultPlaybackRate = v;
     audio.preservesPitch = true;
     audio.mozPreservesPitch = true;
     audio.webkitPreservesPitch = true;
@@ -4800,9 +5632,12 @@ function applySpeed(v) {
 }
 function cycleSpeed() { showSpeedPicker(); }
 function showSpeedPicker() {
-    const cur = state.settings.speed;
+    const t = state.currentTrack;
+    const book = isSpokenTrack(t);
+    const cur = speedFor(t);
     showModal(`
-        <div class="modal-title">Playback speed</div>
+        <div class="modal-title">${book ? 'Speed for this book' : 'Playback speed'}</div>
+        ${book ? `<div style="color:var(--text-dim);font-size:13px;margin:-6px 0 14px;line-height:1.5">${escapeHtml(displayTrackAlbum(t) || t.title)} remembers its own speed. Music keeps ${state.settings.speed}×.</div>` : ''}
         <div class="speed-grid">
             ${SPEEDS.map(s => `<button class="speed-pick ${s === cur ? 'active' : ''}" data-s="${s}">${s}×</button>`).join('')}
         </div>
@@ -4813,11 +5648,12 @@ function showSpeedPicker() {
     });
 }
 function updateSpeedUI() {
-    const label = state.settings.speed + '×';
+    const sp = speedFor(state.currentTrack);
+    const label = sp + '×';
     $('speed-btn').textContent = label;
     $('np-speed').textContent = label;
-    $('speed-btn').classList.toggle('active', state.settings.speed !== 1);
-    $('np-speed').classList.toggle('active', state.settings.speed !== 1);
+    $('speed-btn').classList.toggle('active', sp !== 1);
+    $('np-speed').classList.toggle('active', sp !== 1);
 }
 
 function toggleShuffle() { state.settings.shuffle = !state.settings.shuffle; updateShuffleRepeatUI(); saveSettings(); }
@@ -4878,6 +5714,7 @@ function navTo(view) {
     pushHistory();
     state.currentView = { kind: view };
     if (view === 'shelf') loadShelf();
+    if (view === 'storage') refreshEstimate().then(() => { if (state.currentView.kind === 'storage') render(); });
     render();
     $('main').scrollTo({ top: 0 });
     closeSidebar();
@@ -4992,7 +5829,9 @@ async function deleteAlbum(key) {
     saveAudiobookFlags();
     saveCategoryMap();
     hideModal();
-    state.currentView = { kind: 'albums' };
+    scheduleBackup(true);
+    if (state.currentView.kind === 'storage') await refreshEstimate();
+    else state.currentView = { kind: 'albums' };
     render();
     toast('Album deleted');
 }
@@ -5093,6 +5932,9 @@ function showAlbumMenu(e, key, isAudiobook) {
         ...categoryMenuItems(key),
         { divider: true },
         { label: 'Open', action: () => openDetail(albumCategory(key) === 'audiobook' ? 'audiobook' : 'album', key) },
+        ...(albumCategory(key) === 'audiobook' ? [state.finished.has(key)
+            ? { label: 'Mark as not finished', action: () => setFinished(key, false) }
+            : { label: 'Mark as finished', action: () => setFinished(key, true) }] : []),
         { divider: true },
         { label: 'Delete album', action: () => confirmDeleteAlbum(key), danger: true },
     ];
@@ -5267,6 +6109,7 @@ function addTracksToPlaylistPrompt(playlistId) {
 }
 
 async function deleteTrack(trackId) {
+    if (state.tracks.some(t => t.id === trackId && t.shelfId)) scheduleBackup(true);
     await dbDelete('tracks', trackId);
     state.tracks = state.tracks.filter(t => t.id !== trackId);
     for (const pl of state.playlists) {
@@ -5450,6 +6293,7 @@ $('repeat-btn').addEventListener('click', cycleRepeat);
 $('np-repeat').addEventListener('click', cycleRepeat);
 $('speed-btn').addEventListener('click', cycleSpeed);
 $('np-speed').addEventListener('click', cycleSpeed);
+$('np-boost').addEventListener('click', toggleBoost);
 $('sleep-btn').addEventListener('click', showSleepMenu);
 $('np-sleep').addEventListener('click', showSleepMenu);
 $('np-eq').addEventListener('click', showEqModal);
@@ -5539,6 +6383,7 @@ window.hideModal = hideModal;
 window.newPlaylistPrompt = newPlaylistPrompt;
 window.showTrackMenu = showTrackMenu;
 window.playChapter = playChapter;
+window.setFinished = setFinished;
 window.showBookmarksModal = showBookmarksModal;
 window.deleteBookmark = deleteBookmark;
 window.addTracksToPlaylistPrompt = addTracksToPlaylistPrompt;
@@ -5558,9 +6403,7 @@ bindVol();
         await loadAll();
         render();
         // Persist storage so iOS doesn't evict our IndexedDB
-        if (navigator.storage && navigator.storage.persist) {
-            navigator.storage.persist().catch(() => {});
-        }
+        requestPersist();
         // Register SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {});
